@@ -228,6 +228,49 @@
   .section-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
   .no-support { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.3); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--wrong); text-align: center; margin: 0 20px; }
 
+
+  /* ── WORD SETS PANEL ── */
+  .sets-view { display: none; flex: 1; flex-direction: column; overflow-y: auto; }
+  .sets-view.active { display: flex; }
+  .sets-header { padding: 20px 20px 12px; }
+  .sets-lang-bar { display: flex; gap: 8px; padding: 0 20px 14px; overflow-x: auto; scrollbar-width: none; }
+  .sets-lang-bar::-webkit-scrollbar { display: none; }
+  .set-lang-btn {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .set-lang-btn.active { background: var(--accent); color: #0e0e14; border-color: var(--accent); font-weight: 700; }
+  .sets-grid { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 20px; }
+  .set-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  .set-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .set-card.active-set { border-color: var(--accent); background: rgba(212,168,67,0.06); }
+  body.spanish .set-card.active-set { border-color: var(--accent); background: rgba(232,69,60,0.06); }
+  .set-card::before {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(212,168,67,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .set-emoji { font-size: 28px; flex-shrink: 0; }
+  .set-info { flex: 1; min-width: 0; }
+  .set-name { font-weight: 600; font-size: 15px; margin-bottom: 3px; }
+  .set-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .set-count { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 4px; }
+  .set-arrow { font-size: 18px; color: var(--muted); flex-shrink: 0; }
+  .set-active-badge {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    background: var(--accent); color: #0e0e14;
+    padding: 2px 8px; border-radius: 8px; text-transform: uppercase;
+  }
+
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -319,11 +362,27 @@
   <!-- NAV -->
   <div class="nav-bar">
     <button class="nav-btn active" id="navPractice" onclick="showView('practice')"><span class="nav-icon">🃏</span>Practice</button>
+    <button class="nav-btn" id="navSets" onclick="showView('sets')"><span class="nav-icon">📦</span>Sets</button>
     <button class="nav-btn" id="navWords" onclick="showView('words')"><span class="nav-icon">📚</span>My Words</button>
     <button class="nav-btn" id="navUploadBtn" onclick="openUpload()"><span class="nav-icon">📤</span>Import</button>
     <button class="nav-btn" id="navStats" onclick="showView('stats')"><span class="nav-icon">📊</span>Stats</button>
   </div>
 </div>
+
+
+  <!-- WORD SETS VIEW -->
+  <div id="setsView" class="sets-view">
+    <div class="sets-header">
+      <div class="section-title">Word Sets</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;">Choose a set to practice — or mix all sets with Random</div>
+    </div>
+    <div class="sets-lang-bar" id="setsLangBar">
+      <button class="set-lang-btn active" onclick="filterSets('all',this)">All Sets</button>
+      <button class="set-lang-btn" onclick="filterSets('fr',this)">🇫🇷 French</button>
+      <button class="set-lang-btn" onclick="filterSets('es',this)">🇪🇸 Spanish</button>
+    </div>
+    <div class="sets-grid" id="setsGrid"></div>
+  </div>
 
 <!-- UPLOAD PANEL -->
 <div class="upload-panel" id="uploadPanel">
@@ -348,117 +407,342 @@
 
 <script>
 // ══════════════════════════════════════════════════════
-// VOCABULARY DATABASES
+// WORD SETS — 6 pre-built sets per language
+// Each entry: { id, lang, emoji, name, desc, words[] }
 // ══════════════════════════════════════════════════════
-const frenchVocab = [
-  // Nouns
-  {en:"apple",tgt:"la pomme",type:"noun"},
-  {en:"water",tgt:"l'eau",type:"noun"},
-  {en:"book",tgt:"le livre",type:"noun"},
-  {en:"house",tgt:"la maison",type:"noun"},
-  {en:"friend",tgt:"l'ami / l'amie",type:"noun"},
-  {en:"dog",tgt:"le chien",type:"noun"},
-  {en:"cat",tgt:"le chat",type:"noun"},
-  {en:"car",tgt:"la voiture",type:"noun"},
-  {en:"city",tgt:"la ville",type:"noun"},
-  {en:"day",tgt:"le jour",type:"noun"},
-  {en:"time",tgt:"le temps",type:"noun"},
-  {en:"money",tgt:"l'argent",type:"noun"},
-  {en:"bread",tgt:"le pain",type:"noun"},
-  {en:"wine",tgt:"le vin",type:"noun"},
-  {en:"table",tgt:"la table",type:"noun"},
-  // Adjectives
-  {en:"big",tgt:"grand / grande",type:"adjective"},
-  {en:"small",tgt:"petit / petite",type:"adjective"},
-  {en:"beautiful",tgt:"beau / belle",type:"adjective"},
-  {en:"good",tgt:"bon / bonne",type:"adjective"},
-  {en:"happy",tgt:"heureux / heureuse",type:"adjective"},
-  {en:"cold",tgt:"froid / froide",type:"adjective"},
-  {en:"hot",tgt:"chaud / chaude",type:"adjective"},
-  // Verbs
-  {en:"to eat",tgt:"manger",type:"verb",tenses:{present:"je mange",past:"j'ai mangé",future:"je mangerai"}},
-  {en:"to drink",tgt:"boire",type:"verb",tenses:{present:"je bois",past:"j'ai bu",future:"je boirai"}},
-  {en:"to go",tgt:"aller",type:"verb",tenses:{present:"je vais",past:"je suis allé",future:"j'irai"}},
-  {en:"to speak",tgt:"parler",type:"verb",tenses:{present:"je parle",past:"j'ai parlé",future:"je parlerai"}},
-  {en:"to have",tgt:"avoir",type:"verb",tenses:{present:"j'ai",past:"j'ai eu",future:"j'aurai"}},
-  {en:"to be",tgt:"être",type:"verb",tenses:{present:"je suis",past:"j'ai été",future:"je serai"}},
-  {en:"to want",tgt:"vouloir",type:"verb",tenses:{present:"je veux",past:"j'ai voulu",future:"je voudrai"}},
-  {en:"to know",tgt:"savoir",type:"verb",tenses:{present:"je sais",past:"j'ai su",future:"je saurai"}},
-  {en:"to come",tgt:"venir",type:"verb",tenses:{present:"je viens",past:"je suis venu",future:"je viendrai"}},
-  {en:"to see",tgt:"voir",type:"verb",tenses:{present:"je vois",past:"j'ai vu",future:"je verrai"}},
-  {en:"to do / to make",tgt:"faire",type:"verb",tenses:{present:"je fais",past:"j'ai fait",future:"je ferai"}},
-  {en:"to take",tgt:"prendre",type:"verb",tenses:{present:"je prends",past:"j'ai pris",future:"je prendrai"}},
-  // Phrases
-  {en:"How are you?",tgt:"Comment allez-vous?",type:"phrase"},
-  {en:"My name is...",tgt:"Je m'appelle...",type:"phrase"},
-  {en:"Where is the bathroom?",tgt:"Où sont les toilettes?",type:"phrase"},
-  {en:"I don't understand",tgt:"Je ne comprends pas",type:"phrase"},
-  {en:"Can you help me?",tgt:"Pouvez-vous m'aider?",type:"phrase"},
-  {en:"What time is it?",tgt:"Quelle heure est-il?",type:"phrase"},
-  {en:"Thank you very much",tgt:"Merci beaucoup",type:"phrase"},
-  {en:"See you later",tgt:"À bientôt",type:"phrase"},
-  {en:"I would like...",tgt:"Je voudrais...",type:"phrase"},
-  {en:"How much does it cost?",tgt:"Combien ça coûte?",type:"phrase"},
-  {en:"Good morning",tgt:"Bonjour",type:"phrase"},
-  {en:"Good evening",tgt:"Bonsoir",type:"phrase"},
-  {en:"Please",tgt:"S'il vous plaît",type:"phrase"},
-  {en:"Excuse me",tgt:"Excusez-moi",type:"phrase"},
+const wordSets = [
+
+  // ── FRENCH SETS ──────────────────────────────────────
+
+  { id:'fr-survival', lang:'fr', emoji:'⭐', name:'Essential Survival',
+    desc:'The words you need to get by in any situation',
+    words:[
+      {en:"Hello",tgt:"Bonjour",type:"phrase"},
+      {en:"Goodbye",tgt:"Au revoir",type:"phrase"},
+      {en:"Good morning",tgt:"Bonjour",type:"phrase"},
+      {en:"Good evening",tgt:"Bonsoir",type:"phrase"},
+      {en:"Good night",tgt:"Bonne nuit",type:"phrase"},
+      {en:"Please",tgt:"S'il vous plaît",type:"phrase"},
+      {en:"Thank you",tgt:"Merci",type:"phrase"},
+      {en:"Thank you very much",tgt:"Merci beaucoup",type:"phrase"},
+      {en:"You're welcome",tgt:"De rien",type:"phrase"},
+      {en:"Yes",tgt:"Oui",type:"phrase"},
+      {en:"No",tgt:"Non",type:"phrase"},
+      {en:"Sorry / Excuse me",tgt:"Pardon / Excusez-moi",type:"phrase"},
+      {en:"I don't understand",tgt:"Je ne comprends pas",type:"phrase"},
+      {en:"Do you speak English?",tgt:"Parlez-vous anglais?",type:"phrase"},
+      {en:"Can you help me?",tgt:"Pouvez-vous m'aider?",type:"phrase"},
+      {en:"Where is the bathroom?",tgt:"Où sont les toilettes?",type:"phrase"},
+      {en:"Call the police!",tgt:"Appelez la police!",type:"phrase"},
+      {en:"I need a doctor",tgt:"J'ai besoin d'un médecin",type:"phrase"},
+      {en:"How much does it cost?",tgt:"Combien ça coûte?",type:"phrase"},
+      {en:"See you later",tgt:"À bientôt",type:"phrase"},
+    ]
+  },
+
+  { id:'fr-cafe', lang:'fr', emoji:'☕', name:'Café & Restaurant',
+    desc:'Order food and drink with confidence',
+    words:[
+      {en:"A table for two please",tgt:"Une table pour deux, s'il vous plaît",type:"phrase"},
+      {en:"The menu please",tgt:"La carte, s'il vous plaît",type:"phrase"},
+      {en:"I would like...",tgt:"Je voudrais...",type:"phrase"},
+      {en:"A coffee please",tgt:"Un café, s'il vous plaît",type:"phrase"},
+      {en:"A glass of water",tgt:"Un verre d'eau",type:"phrase"},
+      {en:"A glass of wine",tgt:"Un verre de vin",type:"phrase"},
+      {en:"The bill please",tgt:"L'addition, s'il vous plaît",type:"phrase"},
+      {en:"It's delicious!",tgt:"C'est délicieux!",type:"phrase"},
+      {en:"I'm vegetarian",tgt:"Je suis végétarien / végétarienne",type:"phrase"},
+      {en:"I'm allergic to...",tgt:"Je suis allergique à...",type:"phrase"},
+      {en:"bread",tgt:"le pain",type:"noun"},
+      {en:"butter",tgt:"le beurre",type:"noun"},
+      {en:"cheese",tgt:"le fromage",type:"noun"},
+      {en:"soup",tgt:"la soupe",type:"noun"},
+      {en:"salad",tgt:"la salade",type:"noun"},
+      {en:"chicken",tgt:"le poulet",type:"noun"},
+      {en:"fish",tgt:"le poisson",type:"noun"},
+      {en:"dessert",tgt:"le dessert",type:"noun"},
+      {en:"tip",tgt:"le pourboire",type:"noun"},
+      {en:"waiter",tgt:"le serveur / la serveuse",type:"noun"},
+    ]
+  },
+
+  { id:'fr-travel', lang:'fr', emoji:'🗺️', name:'Getting Around',
+    desc:'Travel, transport and navigation',
+    words:[
+      {en:"Where is...?",tgt:"Où est...?",type:"phrase"},
+      {en:"Turn left",tgt:"Tournez à gauche",type:"phrase"},
+      {en:"Turn right",tgt:"Tournez à droite",type:"phrase"},
+      {en:"Straight ahead",tgt:"Tout droit",type:"phrase"},
+      {en:"How far is it?",tgt:"C'est loin?",type:"phrase"},
+      {en:"A ticket to... please",tgt:"Un billet pour... s'il vous plaît",type:"phrase"},
+      {en:"What time does it leave?",tgt:"À quelle heure part-il?",type:"phrase"},
+      {en:"I'm lost",tgt:"Je suis perdu / perdue",type:"phrase"},
+      {en:"airport",tgt:"l'aéroport",type:"noun"},
+      {en:"train station",tgt:"la gare",type:"noun"},
+      {en:"bus stop",tgt:"l'arrêt de bus",type:"noun"},
+      {en:"taxi",tgt:"le taxi",type:"noun"},
+      {en:"hotel",tgt:"l'hôtel",type:"noun"},
+      {en:"pharmacy",tgt:"la pharmacie",type:"noun"},
+      {en:"hospital",tgt:"l'hôpital",type:"noun"},
+      {en:"supermarket",tgt:"le supermarché",type:"noun"},
+      {en:"street",tgt:"la rue",type:"noun"},
+      {en:"map",tgt:"la carte",type:"noun"},
+      {en:"left",tgt:"gauche",type:"noun"},
+      {en:"right",tgt:"droite",type:"noun"},
+    ]
+  },
+
+  { id:'fr-numbers', lang:'fr', emoji:'🔢', name:'Numbers, Time & Money',
+    desc:'The practical building blocks of any conversation',
+    words:[
+      {en:"one",tgt:"un / une",type:"noun"},
+      {en:"two",tgt:"deux",type:"noun"},
+      {en:"three",tgt:"trois",type:"noun"},
+      {en:"four",tgt:"quatre",type:"noun"},
+      {en:"five",tgt:"cinq",type:"noun"},
+      {en:"six",tgt:"six",type:"noun"},
+      {en:"seven",tgt:"sept",type:"noun"},
+      {en:"eight",tgt:"huit",type:"noun"},
+      {en:"nine",tgt:"neuf",type:"noun"},
+      {en:"ten",tgt:"dix",type:"noun"},
+      {en:"twenty",tgt:"vingt",type:"noun"},
+      {en:"one hundred",tgt:"cent",type:"noun"},
+      {en:"What time is it?",tgt:"Quelle heure est-il?",type:"phrase"},
+      {en:"It's two o'clock",tgt:"Il est deux heures",type:"phrase"},
+      {en:"today",tgt:"aujourd'hui",type:"noun"},
+      {en:"tomorrow",tgt:"demain",type:"noun"},
+      {en:"yesterday",tgt:"hier",type:"noun"},
+      {en:"Monday",tgt:"lundi",type:"noun"},
+      {en:"How much is this?",tgt:"C'est combien?",type:"phrase"},
+      {en:"That's too expensive",tgt:"C'est trop cher",type:"phrase"},
+    ]
+  },
+
+  { id:'fr-people', lang:'fr', emoji:'👨‍👩‍👧', name:'People & Relationships',
+    desc:'Introduce yourself and talk about others',
+    words:[
+      {en:"My name is...",tgt:"Je m'appelle...",type:"phrase"},
+      {en:"How are you?",tgt:"Comment allez-vous?",type:"phrase"},
+      {en:"I'm fine, thank you",tgt:"Je vais bien, merci",type:"phrase"},
+      {en:"Nice to meet you",tgt:"Enchanté / Enchantée",type:"phrase"},
+      {en:"I'm from...",tgt:"Je viens de...",type:"phrase"},
+      {en:"I live in...",tgt:"J'habite à...",type:"phrase"},
+      {en:"I'm... years old",tgt:"J'ai... ans",type:"phrase"},
+      {en:"mother",tgt:"la mère",type:"noun"},
+      {en:"father",tgt:"le père",type:"noun"},
+      {en:"brother",tgt:"le frère",type:"noun"},
+      {en:"sister",tgt:"la sœur",type:"noun"},
+      {en:"son",tgt:"le fils",type:"noun"},
+      {en:"daughter",tgt:"la fille",type:"noun"},
+      {en:"husband",tgt:"le mari",type:"noun"},
+      {en:"wife",tgt:"la femme",type:"noun"},
+      {en:"friend",tgt:"l'ami / l'amie",type:"noun"},
+      {en:"happy",tgt:"heureux / heureuse",type:"adjective"},
+      {en:"sad",tgt:"triste",type:"adjective"},
+      {en:"tired",tgt:"fatigué / fatiguée",type:"adjective"},
+      {en:"I love...",tgt:"J'aime...",type:"phrase"},
+    ]
+  },
+
+  { id:'fr-verbs', lang:'fr', emoji:'🔄', name:'Verbs in Action',
+    desc:'30 essential verbs — fully conjugated in all tenses',
+    words:[
+      {en:"to be",tgt:"être",type:"verb",tenses:{present:"je suis",past:"j'ai été",future:"je serai"}},
+      {en:"to have",tgt:"avoir",type:"verb",tenses:{present:"j'ai",past:"j'ai eu",future:"j'aurai"}},
+      {en:"to go",tgt:"aller",type:"verb",tenses:{present:"je vais",past:"je suis allé",future:"j'irai"}},
+      {en:"to do / make",tgt:"faire",type:"verb",tenses:{present:"je fais",past:"j'ai fait",future:"je ferai"}},
+      {en:"to say",tgt:"dire",type:"verb",tenses:{present:"je dis",past:"j'ai dit",future:"je dirai"}},
+      {en:"to want",tgt:"vouloir",type:"verb",tenses:{present:"je veux",past:"j'ai voulu",future:"je voudrai"}},
+      {en:"to be able to / can",tgt:"pouvoir",type:"verb",tenses:{present:"je peux",past:"j'ai pu",future:"je pourrai"}},
+      {en:"to know",tgt:"savoir",type:"verb",tenses:{present:"je sais",past:"j'ai su",future:"je saurai"}},
+      {en:"to come",tgt:"venir",type:"verb",tenses:{present:"je viens",past:"je suis venu",future:"je viendrai"}},
+      {en:"to see",tgt:"voir",type:"verb",tenses:{present:"je vois",past:"j'ai vu",future:"je verrai"}},
+      {en:"to give",tgt:"donner",type:"verb",tenses:{present:"je donne",past:"j'ai donné",future:"je donnerai"}},
+      {en:"to take",tgt:"prendre",type:"verb",tenses:{present:"je prends",past:"j'ai pris",future:"je prendrai"}},
+      {en:"to eat",tgt:"manger",type:"verb",tenses:{present:"je mange",past:"j'ai mangé",future:"je mangerai"}},
+      {en:"to drink",tgt:"boire",type:"verb",tenses:{present:"je bois",past:"j'ai bu",future:"je boirai"}},
+      {en:"to speak",tgt:"parler",type:"verb",tenses:{present:"je parle",past:"j'ai parlé",future:"je parlerai"}},
+      {en:"to listen",tgt:"écouter",type:"verb",tenses:{present:"j'écoute",past:"j'ai écouté",future:"j'écouterai"}},
+      {en:"to read",tgt:"lire",type:"verb",tenses:{present:"je lis",past:"j'ai lu",future:"je lirai"}},
+      {en:"to write",tgt:"écrire",type:"verb",tenses:{present:"j'écris",past:"j'ai écrit",future:"j'écrirai"}},
+      {en:"to think",tgt:"penser",type:"verb",tenses:{present:"je pense",past:"j'ai pensé",future:"je penserai"}},
+      {en:"to love / like",tgt:"aimer",type:"verb",tenses:{present:"j'aime",past:"j'ai aimé",future:"j'aimerai"}},
+    ]
+  },
+
+  // ── SPANISH SETS ─────────────────────────────────────
+
+  { id:'es-survival', lang:'es', emoji:'⭐', name:'Essential Survival',
+    desc:'The words you need to get by in any situation',
+    words:[
+      {en:"Hello",tgt:"Hola",type:"phrase"},
+      {en:"Goodbye",tgt:"Adiós",type:"phrase"},
+      {en:"Good morning",tgt:"Buenos días",type:"phrase"},
+      {en:"Good afternoon",tgt:"Buenas tardes",type:"phrase"},
+      {en:"Good night",tgt:"Buenas noches",type:"phrase"},
+      {en:"Please",tgt:"Por favor",type:"phrase"},
+      {en:"Thank you",tgt:"Gracias",type:"phrase"},
+      {en:"Thank you very much",tgt:"Muchas gracias",type:"phrase"},
+      {en:"You're welcome",tgt:"De nada",type:"phrase"},
+      {en:"Yes",tgt:"Sí",type:"phrase"},
+      {en:"No",tgt:"No",type:"phrase"},
+      {en:"Sorry / Excuse me",tgt:"Perdón / Disculpe",type:"phrase"},
+      {en:"I don't understand",tgt:"No entiendo",type:"phrase"},
+      {en:"Do you speak English?",tgt:"¿Habla inglés?",type:"phrase"},
+      {en:"Can you help me?",tgt:"¿Puedes ayudarme?",type:"phrase"},
+      {en:"Where is the bathroom?",tgt:"¿Dónde está el baño?",type:"phrase"},
+      {en:"Call the police!",tgt:"¡Llame a la policía!",type:"phrase"},
+      {en:"I need a doctor",tgt:"Necesito un médico",type:"phrase"},
+      {en:"How much does it cost?",tgt:"¿Cuánto cuesta?",type:"phrase"},
+      {en:"See you later",tgt:"Hasta luego",type:"phrase"},
+    ]
+  },
+
+  { id:'es-cafe', lang:'es', emoji:'☕', name:'Café & Restaurant',
+    desc:'Order food and drink with confidence',
+    words:[
+      {en:"A table for two please",tgt:"Una mesa para dos, por favor",type:"phrase"},
+      {en:"The menu please",tgt:"La carta, por favor",type:"phrase"},
+      {en:"I would like...",tgt:"Quisiera...",type:"phrase"},
+      {en:"A coffee please",tgt:"Un café, por favor",type:"phrase"},
+      {en:"A glass of water",tgt:"Un vaso de agua",type:"phrase"},
+      {en:"A glass of wine",tgt:"Una copa de vino",type:"phrase"},
+      {en:"The bill please",tgt:"La cuenta, por favor",type:"phrase"},
+      {en:"It's delicious!",tgt:"¡Está delicioso!",type:"phrase"},
+      {en:"I'm vegetarian",tgt:"Soy vegetariano / vegetariana",type:"phrase"},
+      {en:"I'm allergic to...",tgt:"Soy alérgico a...",type:"phrase"},
+      {en:"bread",tgt:"el pan",type:"noun"},
+      {en:"butter",tgt:"la mantequilla",type:"noun"},
+      {en:"cheese",tgt:"el queso",type:"noun"},
+      {en:"soup",tgt:"la sopa",type:"noun"},
+      {en:"salad",tgt:"la ensalada",type:"noun"},
+      {en:"chicken",tgt:"el pollo",type:"noun"},
+      {en:"fish",tgt:"el pescado",type:"noun"},
+      {en:"dessert",tgt:"el postre",type:"noun"},
+      {en:"tip",tgt:"la propina",type:"noun"},
+      {en:"waiter",tgt:"el mesero / el camarero",type:"noun"},
+    ]
+  },
+
+  { id:'es-travel', lang:'es', emoji:'🗺️', name:'Getting Around',
+    desc:'Travel, transport and navigation',
+    words:[
+      {en:"Where is...?",tgt:"¿Dónde está...?",type:"phrase"},
+      {en:"Turn left",tgt:"Gire a la izquierda",type:"phrase"},
+      {en:"Turn right",tgt:"Gire a la derecha",type:"phrase"},
+      {en:"Straight ahead",tgt:"Todo recto / Derecho",type:"phrase"},
+      {en:"How far is it?",tgt:"¿Está lejos?",type:"phrase"},
+      {en:"A ticket to... please",tgt:"Un billete para... por favor",type:"phrase"},
+      {en:"What time does it leave?",tgt:"¿A qué hora sale?",type:"phrase"},
+      {en:"I'm lost",tgt:"Estoy perdido / perdida",type:"phrase"},
+      {en:"airport",tgt:"el aeropuerto",type:"noun"},
+      {en:"train station",tgt:"la estación de tren",type:"noun"},
+      {en:"bus stop",tgt:"la parada de autobús",type:"noun"},
+      {en:"taxi",tgt:"el taxi",type:"noun"},
+      {en:"hotel",tgt:"el hotel",type:"noun"},
+      {en:"pharmacy",tgt:"la farmacia",type:"noun"},
+      {en:"hospital",tgt:"el hospital",type:"noun"},
+      {en:"supermarket",tgt:"el supermercado",type:"noun"},
+      {en:"street",tgt:"la calle",type:"noun"},
+      {en:"map",tgt:"el mapa",type:"noun"},
+      {en:"left",tgt:"izquierda",type:"noun"},
+      {en:"right",tgt:"derecha",type:"noun"},
+    ]
+  },
+
+  { id:'es-numbers', lang:'es', emoji:'🔢', name:'Numbers, Time & Money',
+    desc:'The practical building blocks of any conversation',
+    words:[
+      {en:"one",tgt:"uno / una",type:"noun"},
+      {en:"two",tgt:"dos",type:"noun"},
+      {en:"three",tgt:"tres",type:"noun"},
+      {en:"four",tgt:"cuatro",type:"noun"},
+      {en:"five",tgt:"cinco",type:"noun"},
+      {en:"six",tgt:"seis",type:"noun"},
+      {en:"seven",tgt:"siete",type:"noun"},
+      {en:"eight",tgt:"ocho",type:"noun"},
+      {en:"nine",tgt:"nueve",type:"noun"},
+      {en:"ten",tgt:"diez",type:"noun"},
+      {en:"twenty",tgt:"veinte",type:"noun"},
+      {en:"one hundred",tgt:"cien",type:"noun"},
+      {en:"What time is it?",tgt:"¿Qué hora es?",type:"phrase"},
+      {en:"It's two o'clock",tgt:"Son las dos",type:"phrase"},
+      {en:"today",tgt:"hoy",type:"noun"},
+      {en:"tomorrow",tgt:"mañana",type:"noun"},
+      {en:"yesterday",tgt:"ayer",type:"noun"},
+      {en:"Monday",tgt:"lunes",type:"noun"},
+      {en:"How much is this?",tgt:"¿Cuánto es esto?",type:"phrase"},
+      {en:"That's too expensive",tgt:"Es demasiado caro",type:"phrase"},
+    ]
+  },
+
+  { id:'es-people', lang:'es', emoji:'👨‍👩‍👧', name:'People & Relationships',
+    desc:'Introduce yourself and talk about others',
+    words:[
+      {en:"My name is...",tgt:"Me llamo...",type:"phrase"},
+      {en:"How are you?",tgt:"¿Cómo estás?",type:"phrase"},
+      {en:"I'm fine, thank you",tgt:"Estoy bien, gracias",type:"phrase"},
+      {en:"Nice to meet you",tgt:"Mucho gusto",type:"phrase"},
+      {en:"I'm from...",tgt:"Soy de...",type:"phrase"},
+      {en:"I live in...",tgt:"Vivo en...",type:"phrase"},
+      {en:"I'm... years old",tgt:"Tengo... años",type:"phrase"},
+      {en:"mother",tgt:"la madre",type:"noun"},
+      {en:"father",tgt:"el padre",type:"noun"},
+      {en:"brother",tgt:"el hermano",type:"noun"},
+      {en:"sister",tgt:"la hermana",type:"noun"},
+      {en:"son",tgt:"el hijo",type:"noun"},
+      {en:"daughter",tgt:"la hija",type:"noun"},
+      {en:"husband",tgt:"el esposo / el marido",type:"noun"},
+      {en:"wife",tgt:"la esposa",type:"noun"},
+      {en:"friend",tgt:"el amigo / la amiga",type:"noun"},
+      {en:"happy",tgt:"feliz",type:"adjective"},
+      {en:"sad",tgt:"triste",type:"adjective"},
+      {en:"tired",tgt:"cansado / cansada",type:"adjective"},
+      {en:"I love...",tgt:"Me encanta...",type:"phrase"},
+    ]
+  },
+
+  { id:'es-verbs', lang:'es', emoji:'🔄', name:'Verbs in Action',
+    desc:'Essential verbs fully conjugated in all tenses',
+    words:[
+      {en:"to be (permanent)",tgt:"ser",type:"verb",tenses:{present:"yo soy",past:"yo fui",future:"yo seré"}},
+      {en:"to be (temporary)",tgt:"estar",type:"verb",tenses:{present:"yo estoy",past:"yo estuve",future:"yo estaré"}},
+      {en:"to have",tgt:"tener",type:"verb",tenses:{present:"yo tengo",past:"yo tuve",future:"yo tendré"}},
+      {en:"to go",tgt:"ir",type:"verb",tenses:{present:"yo voy",past:"yo fui",future:"yo iré"}},
+      {en:"to do / make",tgt:"hacer",type:"verb",tenses:{present:"yo hago",past:"yo hice",future:"yo haré"}},
+      {en:"to say",tgt:"decir",type:"verb",tenses:{present:"yo digo",past:"yo dije",future:"yo diré"}},
+      {en:"to want",tgt:"querer",type:"verb",tenses:{present:"yo quiero",past:"yo quise",future:"yo querré"}},
+      {en:"to be able to / can",tgt:"poder",type:"verb",tenses:{present:"yo puedo",past:"yo pude",future:"yo podré"}},
+      {en:"to know",tgt:"saber",type:"verb",tenses:{present:"yo sé",past:"yo supe",future:"yo sabré"}},
+      {en:"to come",tgt:"venir",type:"verb",tenses:{present:"yo vengo",past:"yo vine",future:"yo vendré"}},
+      {en:"to see",tgt:"ver",type:"verb",tenses:{present:"yo veo",past:"yo vi",future:"yo veré"}},
+      {en:"to give",tgt:"dar",type:"verb",tenses:{present:"yo doy",past:"yo di",future:"yo daré"}},
+      {en:"to take",tgt:"tomar",type:"verb",tenses:{present:"yo tomo",past:"yo tomé",future:"yo tomaré"}},
+      {en:"to eat",tgt:"comer",type:"verb",tenses:{present:"yo como",past:"yo comí",future:"yo comeré"}},
+      {en:"to drink",tgt:"beber",type:"verb",tenses:{present:"yo bebo",past:"yo bebí",future:"yo beberé"}},
+      {en:"to speak",tgt:"hablar",type:"verb",tenses:{present:"yo hablo",past:"yo hablé",future:"yo hablaré"}},
+      {en:"to listen",tgt:"escuchar",type:"verb",tenses:{present:"yo escucho",past:"yo escuché",future:"yo escucharé"}},
+      {en:"to read",tgt:"leer",type:"verb",tenses:{present:"yo leo",past:"yo leí",future:"yo leeré"}},
+      {en:"to think",tgt:"pensar",type:"verb",tenses:{present:"yo pienso",past:"yo pensé",future:"yo pensaré"}},
+      {en:"to love / like",tgt:"amar / gustar",type:"verb",tenses:{present:"yo amo",past:"yo amé",future:"yo amaré"}},
+    ]
+  },
 ];
 
-const spanishVocab = [
-  // Nouns
-  {en:"apple",tgt:"la manzana",type:"noun"},
-  {en:"water",tgt:"el agua",type:"noun"},
-  {en:"book",tgt:"el libro",type:"noun"},
-  {en:"house",tgt:"la casa",type:"noun"},
-  {en:"friend",tgt:"el amigo / la amiga",type:"noun"},
-  {en:"dog",tgt:"el perro",type:"noun"},
-  {en:"cat",tgt:"el gato",type:"noun"},
-  {en:"car",tgt:"el coche / el carro",type:"noun"},
-  {en:"city",tgt:"la ciudad",type:"noun"},
-  {en:"day",tgt:"el día",type:"noun"},
-  {en:"time",tgt:"el tiempo",type:"noun"},
-  {en:"money",tgt:"el dinero",type:"noun"},
-  {en:"bread",tgt:"el pan",type:"noun"},
-  {en:"wine",tgt:"el vino",type:"noun"},
-  {en:"table",tgt:"la mesa",type:"noun"},
-  // Adjectives
-  {en:"big",tgt:"grande",type:"adjective"},
-  {en:"small",tgt:"pequeño / pequeña",type:"adjective"},
-  {en:"beautiful",tgt:"hermoso / hermosa",type:"adjective"},
-  {en:"good",tgt:"bueno / buena",type:"adjective"},
-  {en:"happy",tgt:"feliz",type:"adjective"},
-  {en:"cold",tgt:"frío / fría",type:"adjective"},
-  {en:"hot",tgt:"caliente",type:"adjective"},
-  // Verbs
-  {en:"to eat",tgt:"comer",type:"verb",tenses:{present:"yo como",past:"yo comí",future:"yo comeré"}},
-  {en:"to drink",tgt:"beber",type:"verb",tenses:{present:"yo bebo",past:"yo bebí",future:"yo beberé"}},
-  {en:"to go",tgt:"ir",type:"verb",tenses:{present:"yo voy",past:"yo fui",future:"yo iré"}},
-  {en:"to speak",tgt:"hablar",type:"verb",tenses:{present:"yo hablo",past:"yo hablé",future:"yo hablaré"}},
-  {en:"to have",tgt:"tener",type:"verb",tenses:{present:"yo tengo",past:"yo tuve",future:"yo tendré"}},
-  {en:"to be",tgt:"ser / estar",type:"verb",tenses:{present:"yo soy / yo estoy",past:"yo fui / yo estuve",future:"yo seré / yo estaré"}},
-  {en:"to want",tgt:"querer",type:"verb",tenses:{present:"yo quiero",past:"yo quise",future:"yo querré"}},
-  {en:"to know",tgt:"saber",type:"verb",tenses:{present:"yo sé",past:"yo supe",future:"yo sabré"}},
-  {en:"to come",tgt:"venir",type:"verb",tenses:{present:"yo vengo",past:"yo vine",future:"yo vendré"}},
-  {en:"to see",tgt:"ver",type:"verb",tenses:{present:"yo veo",past:"yo vi",future:"yo veré"}},
-  {en:"to do / to make",tgt:"hacer",type:"verb",tenses:{present:"yo hago",past:"yo hice",future:"yo haré"}},
-  {en:"to take",tgt:"tomar",type:"verb",tenses:{present:"yo tomo",past:"yo tomé",future:"yo tomaré"}},
-  // Phrases
-  {en:"How are you?",tgt:"¿Cómo estás?",type:"phrase"},
-  {en:"My name is...",tgt:"Me llamo...",type:"phrase"},
-  {en:"Where is the bathroom?",tgt:"¿Dónde está el baño?",type:"phrase"},
-  {en:"I don't understand",tgt:"No entiendo",type:"phrase"},
-  {en:"Can you help me?",tgt:"¿Puedes ayudarme?",type:"phrase"},
-  {en:"What time is it?",tgt:"¿Qué hora es?",type:"phrase"},
-  {en:"Thank you very much",tgt:"Muchas gracias",type:"phrase"},
-  {en:"See you later",tgt:"Hasta luego",type:"phrase"},
-  {en:"I would like...",tgt:"Quisiera...",type:"phrase"},
-  {en:"How much does it cost?",tgt:"¿Cuánto cuesta?",type:"phrase"},
-  {en:"Good morning",tgt:"Buenos días",type:"phrase"},
-  {en:"Good evening",tgt:"Buenas noches",type:"phrase"},
-  {en:"Please",tgt:"Por favor",type:"phrase"},
-  {en:"Excuse me",tgt:"Perdón / Disculpe",type:"phrase"},
-];
+// Build flat vocab arrays from sets (for backward compat)
+function buildVocabFromSets(lang) {
+  const seen = new Set();
+  const result = [];
+  wordSets.filter(s=>s.lang===lang).forEach(s=>{
+    s.words.forEach(w=>{
+      const key = w.en+'|'+w.tgt;
+      if(!seen.has(key)){ seen.add(key); result.push(w); }
+    });
+  });
+  return result;
+}
+const frenchVocab  = buildVocabFromSets('fr');
+const spanishVocab = buildVocabFromSets('es');
 
 const tenseNames = {present:"Present Tense",past:"Past Tense",future:"Future Tense"};
 
@@ -858,8 +1142,13 @@ function showView(view) {
   document.getElementById('practiceView').style.display=view==='practice'?'flex':'none';
   document.getElementById('statsView').classList.toggle('active',view==='stats');
   document.getElementById('wordlistView').classList.toggle('active',view==='words');
-  ['navPractice','navStats','navWords'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('setsView').classList.toggle('active',view==='sets');
+  ['navPractice','navStats','navWords','navSets'].forEach(id=>document.getElementById(id).classList.remove('active'));
   if(view==='practice') document.getElementById('navPractice').classList.add('active');
+  if(view==='sets') {
+    document.getElementById('navSets').classList.add('active');
+    renderSets();
+  }
   if(view==='stats') {
     document.getElementById('navStats').classList.add('active');
     document.getElementById('sCorrect').textContent=stats.correct;
@@ -941,12 +1230,80 @@ function importWords() {
   updateLimitBar();
 }
 
+
+// ── WORD SETS ───────────────────────────────────────
+let activeSetId = null;   // null = all words
+let setsFilterLang = 'all';
+
+function renderSets() {
+  const grid = document.getElementById('setsGrid');
+  const filtered = setsFilterLang === 'all'
+    ? wordSets
+    : wordSets.filter(s => s.lang === setsFilterLang);
+
+  grid.innerHTML = filtered.map(s => {
+    const isActive = s.id === activeSetId;
+    return `
+    <div class="set-card ${isActive ? 'active-set' : ''}" onclick="activateSet('${s.id}')">
+      ${isActive ? '<div class="set-active-badge">Active</div>' : ''}
+      <div class="set-emoji">${s.emoji}</div>
+      <div class="set-info">
+        <div class="set-name">${s.lang === 'fr' ? '🇫🇷' : '🇪🇸'} ${s.name}</div>
+        <div class="set-desc">${s.desc}</div>
+        <div class="set-count">${s.words.length} words &amp; phrases</div>
+      </div>
+      <div class="set-arrow">${isActive ? '✓' : '›'}</div>
+    </div>`;
+  }).join('');
+
+  // "All words" card at top
+  const allCard = `
+    <div class="set-card ${activeSetId === null ? 'active-set' : ''}" onclick="activateSet(null)" style="margin-bottom:4px;">
+      ${activeSetId === null ? '<div class="set-active-badge">Active</div>' : ''}
+      <div class="set-emoji">🎲</div>
+      <div class="set-info">
+        <div class="set-name">All Words</div>
+        <div class="set-desc">Practice everything in your library</div>
+        <div class="set-count">${vocab.length} total words</div>
+      </div>
+      <div class="set-arrow">${activeSetId === null ? '✓' : '›'}</div>
+    </div>`;
+  grid.innerHTML = allCard + grid.innerHTML;
+}
+
+function activateSet(setId) {
+  activeSetId = setId;
+  if (setId === null) {
+    // Use full vocab for current language
+    const userExtra = currentLang === 'fr' ? userVocabFr : userVocabEs;
+    vocab = [...langConfig[currentLang].vocab, ...userExtra];
+  } else {
+    const set = wordSets.find(s => s.id === setId);
+    if (!set) return;
+    // Switch language to match set if needed
+    if (set.lang !== currentLang) switchLang(set.lang);
+    vocab = [...set.words];
+  }
+  renderSets();
+  // Go to practice with this set
+  newSession();
+  showView('practice');
+}
+
+function filterSets(lang, btn) {
+  setsFilterLang = lang;
+  document.querySelectorAll('.set-lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSets();
+}
+
 // ── INIT ────────────────────────────────────────────
 loadUserVocab();
 vocab = [...frenchVocab, ...userVocabFr]; // start with French + any saved words
 initSpeech();
 buildSession();
 loadCard();
+renderSets(); // pre-render sets in background
 </script>
 </body>
 </html>
