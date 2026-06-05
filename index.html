@@ -1,4 +1,20 @@
 <!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════╗
+  ║  ParleBien — Verbal Learning Platform                ║
+  ║  Version:  1.0.4                                     ║
+  ║  Released: 2025-06-05                                ║
+  ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
+  ║  Live:     parlebien.com                             ║
+  ╠══════════════════════════════════════════════════════╣
+  ║  Changelog:                                          ║
+  ║  1.0.4 — Fixed sets view blank space & locked btn    ║
+  ║  1.0.3 — Added 12 pre-built word sets (FR + ES)      ║
+  ║  1.0.2 — Added FR/ES language toggle + Spanish vocab  ║
+  ║  1.0.1 — Combined mic + text input, localStorage     ║
+  ║  1.0.0 — Initial release, core flashcard engine      ║
+  ╚══════════════════════════════════════════════════════╝
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -230,9 +246,9 @@
 
 
   /* ── WORD SETS PANEL ── */
-  .sets-view { display: none; flex: 1; flex-direction: column; overflow-y: auto; }
-  .sets-view.active { display: flex; }
-  .sets-header { padding: 20px 20px 12px; }
+  .sets-view { display: none; flex-direction: column; overflow-y: auto; }
+  .sets-view.active { display: flex; flex: 1; }
+  .sets-header { padding: 16px 20px 10px; }
   .sets-lang-bar { display: flex; gap: 8px; padding: 0 20px 14px; overflow-x: auto; scrollbar-width: none; }
   .sets-lang-bar::-webkit-scrollbar { display: none; }
   .set-lang-btn {
@@ -350,6 +366,9 @@
     <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-info"><div class="stat-val" id="sWrong">0</div><div class="stat-lbl">Missed this session</div></div></div>
     <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-info"><div class="stat-val" id="sScore">0</div><div class="stat-lbl">Total score</div></div></div>
     <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-info"><div class="stat-val" id="sLibrary">0</div><div class="stat-lbl">Words in library</div></div></div>
+    <div style="text-align:center;padding:12px 0 4px;">
+      <span style="font-size:11px;color:var(--muted);letter-spacing:0.5px;" id="versionLabel"></span>
+    </div>
   </div>
 
   <!-- WORD LIST VIEW -->
@@ -776,6 +795,10 @@ const langConfig = {
   }
 };
 
+// ── VERSION ─────────────────────────────────────────
+const APP_VERSION = '1.0.4';
+const APP_RELEASE = '2025-06-05';
+
 // ── TIER SYSTEM (swap currentTier when you add payments) ──
 const TIERS = {
   free:    { label: 'Free',      limit: 50,    color: '#7a7890' },
@@ -1155,6 +1178,7 @@ function showView(view) {
     document.getElementById('sWrong').textContent=stats.wrong;
     document.getElementById('sScore').textContent=score;
     document.getElementById('sLibrary').textContent=vocab.length;
+    document.getElementById('versionLabel').textContent=`ParleBien v${APP_VERSION} · ${APP_RELEASE}`;
   }
   if(view==='words') {
     document.getElementById('navWords').classList.add('active');
@@ -1241,7 +1265,20 @@ function renderSets() {
     ? wordSets
     : wordSets.filter(s => s.lang === setsFilterLang);
 
-  grid.innerHTML = filtered.map(s => {
+  // Build all-words card first so it always appears at top
+  const allCard = `
+    <div class="set-card ${activeSetId === null ? 'active-set' : ''}" onclick="activateSet(null)">
+      ${activeSetId === null ? '<div class="set-active-badge">Active</div>' : ''}
+      <div class="set-emoji">🎲</div>
+      <div class="set-info">
+        <div class="set-name">All Words</div>
+        <div class="set-desc">Practice everything in your library</div>
+        <div class="set-count">${vocab.length} total words</div>
+      </div>
+      <div class="set-arrow">${activeSetId === null ? '✓' : '›'}</div>
+    </div>`;
+
+  const setCards = filtered.map(s => {
     const isActive = s.id === activeSetId;
     return `
     <div class="set-card ${isActive ? 'active-set' : ''}" onclick="activateSet('${s.id}')">
@@ -1256,38 +1293,36 @@ function renderSets() {
     </div>`;
   }).join('');
 
-  // "All words" card at top
-  const allCard = `
-    <div class="set-card ${activeSetId === null ? 'active-set' : ''}" onclick="activateSet(null)" style="margin-bottom:4px;">
-      ${activeSetId === null ? '<div class="set-active-badge">Active</div>' : ''}
-      <div class="set-emoji">🎲</div>
-      <div class="set-info">
-        <div class="set-name">All Words</div>
-        <div class="set-desc">Practice everything in your library</div>
-        <div class="set-count">${vocab.length} total words</div>
-      </div>
-      <div class="set-arrow">${activeSetId === null ? '✓' : '›'}</div>
-    </div>`;
-  grid.innerHTML = allCard + grid.innerHTML;
+  grid.innerHTML = allCard + setCards;
 }
 
 function activateSet(setId) {
   activeSetId = setId;
   if (setId === null) {
-    // Use full vocab for current language
     const userExtra = currentLang === 'fr' ? userVocabFr : userVocabEs;
     vocab = [...langConfig[currentLang].vocab, ...userExtra];
   } else {
     const set = wordSets.find(s => s.id === setId);
     if (!set) return;
-    // Switch language to match set if needed
     if (set.lang !== currentLang) switchLang(set.lang);
     vocab = [...set.words];
   }
+  // Fully reset session state before switching view
+  awaitingNext = false;
+  score = 0; streak = 0; stats = {correct:0, wrong:0, skipped:0};
+  document.getElementById('scoreDisplay').textContent = 0;
+  document.getElementById('submitBtn').textContent = 'Check Answer';
+  document.getElementById('submitBtn').onclick = submitAnswer;
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('micBtn').textContent = '🎙️';
+  document.getElementById('micLabel').textContent = '🎙️ Tap mic to speak  |  ⌨️ Or just type above';
+  document.getElementById('typeInput').value = '';
+  document.getElementById('resultBanner').className = 'result-banner';
+  document.getElementById('flashCard').classList.remove('correct','wrong');
   renderSets();
-  // Go to practice with this set
-  newSession();
+  buildSession();
   showView('practice');
+  loadCard();
 }
 
 function filterSets(lang, btn) {
