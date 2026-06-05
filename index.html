@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ParleBien – Language Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0e14; --surface: #16161f; --card: #1c1c28;
+    --accent: #d4a843; --accent2: #7b6cf6;
+    --correct: #4caf7d; --wrong: #e05c5c;
+    --text: #f0eee8; --muted: #7a7890; --border: rgba(255,255,255,0.07);
+  }
+  /* Spanish theme override */
+  body.spanish {
+    --accent: #e8453c;
+    --accent2: #f5a623;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; overflow-x: hidden;
+    transition: --accent 0.4s;
+  }
+  .app { width: 100%; max-width: 480px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); gap: 10px;
+  }
+  .logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: var(--accent); white-space: nowrap; }
+  .logo span { color: var(--text); }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .score-badge {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap;
+  }
+  .score-badge b { color: var(--accent); }
+
+  /* Language toggle */
+  .lang-toggle {
+    display: flex; background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px; gap: 2px;
+  }
+  .lang-btn {
+    padding: 5px 12px; border-radius: 16px; border: none;
+    background: transparent; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .lang-btn.active { background: var(--accent); color: #0e0e14; }
+
+  /* ── MODE BAR ── */
+  .mode-bar {
+    display: flex; gap: 8px; padding: 14px 20px;
+    overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .mode-bar::-webkit-scrollbar { display: none; }
+  .mode-btn {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .mode-btn.active { background: var(--accent); color: #0e0e14; border-color: var(--accent); font-weight: 700; }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { padding: 0 20px 14px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .progress-track { height: 3px; background: var(--card); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 2px; transition: width 0.5s ease; }
+
+  /* ── FLASH CARD ── */
+  .card-area { flex: 1; padding: 0 20px; display: flex; flex-direction: column; gap: 14px; }
+  .flash-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px 28px; text-align: center;
+    position: relative; overflow: hidden; min-height: 190px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .flash-card::before {
+    content: ''; position: absolute; top: -60px; right: -60px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(212,168,67,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body.spanish .flash-card::before { background: radial-gradient(circle, rgba(232,69,60,0.07) 0%, transparent 70%); }
+  .flash-card.correct { border-color: var(--correct); box-shadow: 0 0 28px rgba(76,175,125,0.15); }
+  .flash-card.wrong   { border-color: var(--wrong);   box-shadow: 0 0 28px rgba(224,92,92,0.15); }
+  .card-direction { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+  .card-tense { font-size: 11px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent2); background: rgba(123,108,246,0.12); padding: 3px 10px; border-radius: 10px; }
+  body.spanish .card-tense { background: rgba(245,166,35,0.12); }
+  .card-word { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 700; line-height: 1.2; }
+  .card-type { font-size: 12px; color: var(--muted); font-style: italic; }
+  .speak-btn {
+    background: rgba(212,168,67,0.12); border: 1px solid rgba(212,168,67,0.25);
+    border-radius: 50%; width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; font-size: 17px;
+  }
+  body.spanish .speak-btn { background: rgba(232,69,60,0.12); border-color: rgba(232,69,60,0.25); }
+  .speak-btn:hover { transform: scale(1.08); filter: brightness(1.2); }
+
+  /* ── RESULT BANNER ── */
+  .result-banner { border-radius: 14px; padding: 13px 16px; display: none; gap: 10px; align-items: flex-start; }
+  .result-banner.show { display: flex; }
+  .result-banner.correct-banner { background: rgba(76,175,125,0.1); border: 1px solid rgba(76,175,125,0.3); }
+  .result-banner.wrong-banner   { background: rgba(224,92,92,0.1);  border: 1px solid rgba(224,92,92,0.3); }
+  .result-icon { font-size: 20px; flex-shrink: 0; }
+  .result-text { font-size: 13px; line-height: 1.6; }
+  .result-text b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .result-text .heard { color: var(--muted); font-size: 12px; }
+
+  /* ── ANSWER AREA ── */
+  .answer-area { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .input-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-row:focus-within { border-color: rgba(123,108,246,0.5); box-shadow: 0 0 0 3px rgba(123,108,246,0.08); }
+  body.spanish .input-row:focus-within { border-color: rgba(245,166,35,0.5); box-shadow: 0 0 0 3px rgba(245,166,35,0.08); }
+  .input-row.listening { border-color: rgba(224,92,92,0.6); box-shadow: 0 0 0 3px rgba(224,92,92,0.08); animation: pulse-border 1.5s infinite; }
+  @keyframes pulse-border {
+    0%,100% { box-shadow: 0 0 0 3px rgba(224,92,92,0.08); }
+    50%      { box-shadow: 0 0 0 6px rgba(224,92,92,0.14); }
+  }
+  .mic-btn-small {
+    flex-shrink: 0; width: 46px; height: 46px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, var(--accent2), #5a52d5);
+    color: white; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; box-shadow: 0 2px 10px rgba(123,108,246,0.3);
+  }
+  body.spanish .mic-btn-small { background: linear-gradient(135deg, #f5a623, #e8453c); box-shadow: 0 2px 10px rgba(232,69,60,0.3); }
+  .mic-btn-small:hover { filter: brightness(1.15); transform: scale(1.04); }
+  .mic-btn-small.listening {
+    background: linear-gradient(135deg, #e05c5c, #c0392b) !important;
+    box-shadow: 0 2px 14px rgba(224,92,92,0.5) !important;
+    animation: pulse-mic 1.5s infinite;
+  }
+  @keyframes pulse-mic {
+    0%,100% { box-shadow: 0 2px 10px rgba(224,92,92,0.4); }
+    50%      { box-shadow: 0 2px 22px rgba(224,92,92,0.7); }
+  }
+  .input-row input[type="text"] {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 15px; padding: 8px 10px 8px 4px; min-width: 0;
+  }
+  .input-row input[type="text"]::placeholder { color: var(--muted); font-size: 14px; }
+  .mic-label { font-size: 11px; color: var(--muted); text-align: center; letter-spacing: 0.3px; }
+  .action-row { display: flex; gap: 10px; }
+  .btn {
+    flex: 1; padding: 14px; border-radius: 14px; border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: #0e0e14; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--surface); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+
+  /* ── UPLOAD PANEL ── */
+  .upload-panel {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75); z-index: 100;
+    align-items: flex-end; backdrop-filter: blur(4px);
+  }
+  .upload-panel.open { display: flex; }
+  .upload-sheet {
+    background: var(--surface); border-top: 1px solid var(--border);
+    border-radius: 24px 24px 0 0; padding: 28px 20px 40px;
+    width: 100%; max-width: 480px; margin: 0 auto; position: relative;
+  }
+  .sheet-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .sheet-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.6; }
+  .sheet-sub code { color: var(--accent); font-size: 12px; }
+  .upload-textarea {
+    width: 100%; min-height: 130px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 13px; resize: vertical; line-height: 1.6; outline: none; margin-bottom: 14px;
+  }
+  .upload-textarea:focus { border-color: rgba(212,168,67,0.4); }
+  .close-btn {
+    position: absolute; top: 16px; right: 20px;
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── NAV ── */
+  .nav-bar {
+    padding: 14px 20px 24px; display: flex; gap: 10px;
+    border-top: 1px solid var(--border); margin-top: auto;
+  }
+  .nav-btn {
+    flex: 1; padding: 11px 6px; background: transparent;
+    border: 1px solid var(--border); border-radius: 14px;
+    color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.2s;
+  }
+  .nav-btn .nav-icon { font-size: 17px; }
+  .nav-btn.active { background: var(--card); color: var(--accent); border-color: rgba(212,168,67,0.3); }
+  body.spanish .nav-btn.active { border-color: rgba(232,69,60,0.35); }
+
+  /* ── STATS / WORD LIST ── */
+  .stats-view, .wordlist-view { display: none; flex: 1; padding: 20px; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .stats-view.active, .wordlist-view.active { display: flex; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px; }
+  .stat-icon { font-size: 26px; }
+  .stat-val { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 13px; color: var(--muted); }
+  .word-row { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .word-en { font-weight: 500; font-size: 14px; }
+  .word-target { font-size: 13px; color: var(--accent); }
+  .word-badge { font-size: 10px; color: var(--muted); background: var(--surface); padding: 3px 8px; border-radius: 8px; border: 1px solid var(--border); white-space: nowrap; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
+  .no-support { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.3); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--wrong); text-align: center; margin: 0 20px; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card-animate { animation: slideUp 0.3s ease; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo" id="logoText">Parle<span>Bien</span></div>
+    <div class="header-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btnFr" onclick="switchLang('fr')">🇫🇷 French</button>
+        <button class="lang-btn" id="btnEs" onclick="switchLang('es')">🇪🇸 Spanish</button>
+      </div>
+      <div class="score-badge">Score: <b id="scoreDisplay">0</b></div>
+    </div>
+  </div>
+
+  <!-- MODE BAR -->
+  <div class="mode-bar" id="modeBar">
+    <button class="mode-btn active" data-mode="en-tgt" onclick="setMode('en-tgt',this)" id="modeEnTgt">EN → FR</button>
+    <button class="mode-btn" data-mode="tgt-en" onclick="setMode('tgt-en',this)" id="modeTgtEn">FR → EN</button>
+    <button class="mode-btn" data-mode="tense" onclick="setMode('tense',this)">Tenses</button>
+    <button class="mode-btn" data-mode="phrases" onclick="setMode('phrases',this)">Phrases</button>
+    <button class="mode-btn" data-mode="random" onclick="setMode('random',this)">🎲 Random</button>
+  </div>
+
+  <div id="speechWarning" class="no-support" style="display:none;">
+    ⚠️ Speech recognition not supported in this browser. Try Chrome or Edge. You can still type your answers.
+  </div>
+
+  <!-- PRACTICE VIEW -->
+  <div id="practiceView" style="display:flex;flex-direction:column;flex:1;gap:0;">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="progressLabel">Card 1 of 10</span>
+        <span id="streakLabel">🔥 0 streak</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:10%"></div></div>
+    </div>
+    <div class="card-area">
+      <div class="flash-card" id="flashCard">
+        <div class="card-direction" id="cardDirection">ENGLISH → FRENCH</div>
+        <div class="card-tense" id="cardTense" style="display:none">Present Tense</div>
+        <div class="card-word" id="cardWord">Loading...</div>
+        <div class="card-type" id="cardType">noun</div>
+        <button class="speak-btn" onclick="speakPrompt()" title="Hear pronunciation">🔊</button>
+      </div>
+      <div class="result-banner" id="resultBanner">
+        <div class="result-icon" id="resultIcon">✅</div>
+        <div class="result-text" id="resultText"></div>
+      </div>
+    </div>
+    <div class="answer-area">
+      <div class="input-row" id="inputRow">
+        <button class="mic-btn-small" id="micBtn" onclick="toggleListening()" title="Speak your answer">🎙️</button>
+        <input type="text" id="typeInput" placeholder="Speak or type your answer…"
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="onTypeInput(this.value)" onkeydown="if(event.key==='Enter')submitAnswer()">
+      </div>
+      <div class="mic-label" id="micLabel">🎙️ Tap mic to speak &nbsp;|&nbsp; ⌨️ Or just type above</div>
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="skipCard()">Skip</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitAnswer()" disabled>Check Answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS VIEW -->
+  <div id="statsView" class="stats-view">
+    <div class="section-title">Your Progress</div>
+    <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-info"><div class="stat-val" id="sCorrect">0</div><div class="stat-lbl">Correct this session</div></div></div>
+    <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-info"><div class="stat-val" id="sWrong">0</div><div class="stat-lbl">Missed this session</div></div></div>
+    <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-info"><div class="stat-val" id="sScore">0</div><div class="stat-lbl">Total score</div></div></div>
+    <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-info"><div class="stat-val" id="sLibrary">0</div><div class="stat-lbl">Words in library</div></div></div>
+  </div>
+
+  <!-- WORD LIST VIEW -->
+  <div id="wordlistView" class="wordlist-view">
+    <div class="section-title" id="wordlistTitle">My French Library</div>
+    <div id="limitBar" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:4px;"></div>
+    <div id="wordlistContent"></div>
+  </div>
+
+  <!-- NAV -->
+  <div class="nav-bar">
+    <button class="nav-btn active" id="navPractice" onclick="showView('practice')"><span class="nav-icon">🃏</span>Practice</button>
+    <button class="nav-btn" id="navWords" onclick="showView('words')"><span class="nav-icon">📚</span>My Words</button>
+    <button class="nav-btn" id="navUploadBtn" onclick="openUpload()"><span class="nav-icon">📤</span>Import</button>
+    <button class="nav-btn" id="navStats" onclick="showView('stats')"><span class="nav-icon">📊</span>Stats</button>
+  </div>
+</div>
+
+<!-- UPLOAD PANEL -->
+<div class="upload-panel" id="uploadPanel">
+  <div class="upload-sheet">
+    <button class="close-btn" onclick="closeUpload()">✕</button>
+    <div class="sheet-title" id="uploadTitle">Add French Words</div>
+    <div class="sheet-sub">
+      One entry per line:<br>
+      <code>english | translation | type</code> &nbsp;(noun / verb / adjective / phrase)<br><br>
+      For verbs with tenses:<br>
+      <code>to eat | manger | verb | I eat / I ate / I will eat</code><br><br>
+      Examples:<br>
+      <code>apple | la pomme | noun<br>to run | courir | verb | je cours / j'ai couru / je courrai<br>Good morning! | Bonjour! | phrase</code>
+    </div>
+    <textarea class="upload-textarea" id="uploadInput" placeholder="Paste your words here..."></textarea>
+    <div class="action-row">
+      <button class="btn btn-secondary" onclick="closeUpload()">Cancel</button>
+      <button class="btn btn-primary" onclick="importWords()">Import Words</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// VOCABULARY DATABASES
+// ══════════════════════════════════════════════════════
+const frenchVocab = [
+  // Nouns
+  {en:"apple",tgt:"la pomme",type:"noun"},
+  {en:"water",tgt:"l'eau",type:"noun"},
+  {en:"book",tgt:"le livre",type:"noun"},
+  {en:"house",tgt:"la maison",type:"noun"},
+  {en:"friend",tgt:"l'ami / l'amie",type:"noun"},
+  {en:"dog",tgt:"le chien",type:"noun"},
+  {en:"cat",tgt:"le chat",type:"noun"},
+  {en:"car",tgt:"la voiture",type:"noun"},
+  {en:"city",tgt:"la ville",type:"noun"},
+  {en:"day",tgt:"le jour",type:"noun"},
+  {en:"time",tgt:"le temps",type:"noun"},
+  {en:"money",tgt:"l'argent",type:"noun"},
+  {en:"bread",tgt:"le pain",type:"noun"},
+  {en:"wine",tgt:"le vin",type:"noun"},
+  {en:"table",tgt:"la table",type:"noun"},
+  // Adjectives
+  {en:"big",tgt:"grand / grande",type:"adjective"},
+  {en:"small",tgt:"petit / petite",type:"adjective"},
+  {en:"beautiful",tgt:"beau / belle",type:"adjective"},
+  {en:"good",tgt:"bon / bonne",type:"adjective"},
+  {en:"happy",tgt:"heureux / heureuse",type:"adjective"},
+  {en:"cold",tgt:"froid / froide",type:"adjective"},
+  {en:"hot",tgt:"chaud / chaude",type:"adjective"},
+  // Verbs
+  {en:"to eat",tgt:"manger",type:"verb",tenses:{present:"je mange",past:"j'ai mangé",future:"je mangerai"}},
+  {en:"to drink",tgt:"boire",type:"verb",tenses:{present:"je bois",past:"j'ai bu",future:"je boirai"}},
+  {en:"to go",tgt:"aller",type:"verb",tenses:{present:"je vais",past:"je suis allé",future:"j'irai"}},
+  {en:"to speak",tgt:"parler",type:"verb",tenses:{present:"je parle",past:"j'ai parlé",future:"je parlerai"}},
+  {en:"to have",tgt:"avoir",type:"verb",tenses:{present:"j'ai",past:"j'ai eu",future:"j'aurai"}},
+  {en:"to be",tgt:"être",type:"verb",tenses:{present:"je suis",past:"j'ai été",future:"je serai"}},
+  {en:"to want",tgt:"vouloir",type:"verb",tenses:{present:"je veux",past:"j'ai voulu",future:"je voudrai"}},
+  {en:"to know",tgt:"savoir",type:"verb",tenses:{present:"je sais",past:"j'ai su",future:"je saurai"}},
+  {en:"to come",tgt:"venir",type:"verb",tenses:{present:"je viens",past:"je suis venu",future:"je viendrai"}},
+  {en:"to see",tgt:"voir",type:"verb",tenses:{present:"je vois",past:"j'ai vu",future:"je verrai"}},
+  {en:"to do / to make",tgt:"faire",type:"verb",tenses:{present:"je fais",past:"j'ai fait",future:"je ferai"}},
+  {en:"to take",tgt:"prendre",type:"verb",tenses:{present:"je prends",past:"j'ai pris",future:"je prendrai"}},
+  // Phrases
+  {en:"How are you?",tgt:"Comment allez-vous?",type:"phrase"},
+  {en:"My name is...",tgt:"Je m'appelle...",type:"phrase"},
+  {en:"Where is the bathroom?",tgt:"Où sont les toilettes?",type:"phrase"},
+  {en:"I don't understand",tgt:"Je ne comprends pas",type:"phrase"},
+  {en:"Can you help me?",tgt:"Pouvez-vous m'aider?",type:"phrase"},
+  {en:"What time is it?",tgt:"Quelle heure est-il?",type:"phrase"},
+  {en:"Thank you very much",tgt:"Merci beaucoup",type:"phrase"},
+  {en:"See you later",tgt:"À bientôt",type:"phrase"},
+  {en:"I would like...",tgt:"Je voudrais...",type:"phrase"},
+  {en:"How much does it cost?",tgt:"Combien ça coûte?",type:"phrase"},
+  {en:"Good morning",tgt:"Bonjour",type:"phrase"},
+  {en:"Good evening",tgt:"Bonsoir",type:"phrase"},
+  {en:"Please",tgt:"S'il vous plaît",type:"phrase"},
+  {en:"Excuse me",tgt:"Excusez-moi",type:"phrase"},
+];
+
+const spanishVocab = [
+  // Nouns
+  {en:"apple",tgt:"la manzana",type:"noun"},
+  {en:"water",tgt:"el agua",type:"noun"},
+  {en:"book",tgt:"el libro",type:"noun"},
+  {en:"house",tgt:"la casa",type:"noun"},
+  {en:"friend",tgt:"el amigo / la amiga",type:"noun"},
+  {en:"dog",tgt:"el perro",type:"noun"},
+  {en:"cat",tgt:"el gato",type:"noun"},
+  {en:"car",tgt:"el coche / el carro",type:"noun"},
+  {en:"city",tgt:"la ciudad",type:"noun"},
+  {en:"day",tgt:"el día",type:"noun"},
+  {en:"time",tgt:"el tiempo",type:"noun"},
+  {en:"money",tgt:"el dinero",type:"noun"},
+  {en:"bread",tgt:"el pan",type:"noun"},
+  {en:"wine",tgt:"el vino",type:"noun"},
+  {en:"table",tgt:"la mesa",type:"noun"},
+  // Adjectives
+  {en:"big",tgt:"grande",type:"adjective"},
+  {en:"small",tgt:"pequeño / pequeña",type:"adjective"},
+  {en:"beautiful",tgt:"hermoso / hermosa",type:"adjective"},
+  {en:"good",tgt:"bueno / buena",type:"adjective"},
+  {en:"happy",tgt:"feliz",type:"adjective"},
+  {en:"cold",tgt:"frío / fría",type:"adjective"},
+  {en:"hot",tgt:"caliente",type:"adjective"},
+  // Verbs
+  {en:"to eat",tgt:"comer",type:"verb",tenses:{present:"yo como",past:"yo comí",future:"yo comeré"}},
+  {en:"to drink",tgt:"beber",type:"verb",tenses:{present:"yo bebo",past:"yo bebí",future:"yo beberé"}},
+  {en:"to go",tgt:"ir",type:"verb",tenses:{present:"yo voy",past:"yo fui",future:"yo iré"}},
+  {en:"to speak",tgt:"hablar",type:"verb",tenses:{present:"yo hablo",past:"yo hablé",future:"yo hablaré"}},
+  {en:"to have",tgt:"tener",type:"verb",tenses:{present:"yo tengo",past:"yo tuve",future:"yo tendré"}},
+  {en:"to be",tgt:"ser / estar",type:"verb",tenses:{present:"yo soy / yo estoy",past:"yo fui / yo estuve",future:"yo seré / yo estaré"}},
+  {en:"to want",tgt:"querer",type:"verb",tenses:{present:"yo quiero",past:"yo quise",future:"yo querré"}},
+  {en:"to know",tgt:"saber",type:"verb",tenses:{present:"yo sé",past:"yo supe",future:"yo sabré"}},
+  {en:"to come",tgt:"venir",type:"verb",tenses:{present:"yo vengo",past:"yo vine",future:"yo vendré"}},
+  {en:"to see",tgt:"ver",type:"verb",tenses:{present:"yo veo",past:"yo vi",future:"yo veré"}},
+  {en:"to do / to make",tgt:"hacer",type:"verb",tenses:{present:"yo hago",past:"yo hice",future:"yo haré"}},
+  {en:"to take",tgt:"tomar",type:"verb",tenses:{present:"yo tomo",past:"yo tomé",future:"yo tomaré"}},
+  // Phrases
+  {en:"How are you?",tgt:"¿Cómo estás?",type:"phrase"},
+  {en:"My name is...",tgt:"Me llamo...",type:"phrase"},
+  {en:"Where is the bathroom?",tgt:"¿Dónde está el baño?",type:"phrase"},
+  {en:"I don't understand",tgt:"No entiendo",type:"phrase"},
+  {en:"Can you help me?",tgt:"¿Puedes ayudarme?",type:"phrase"},
+  {en:"What time is it?",tgt:"¿Qué hora es?",type:"phrase"},
+  {en:"Thank you very much",tgt:"Muchas gracias",type:"phrase"},
+  {en:"See you later",tgt:"Hasta luego",type:"phrase"},
+  {en:"I would like...",tgt:"Quisiera...",type:"phrase"},
+  {en:"How much does it cost?",tgt:"¿Cuánto cuesta?",type:"phrase"},
+  {en:"Good morning",tgt:"Buenos días",type:"phrase"},
+  {en:"Good evening",tgt:"Buenas noches",type:"phrase"},
+  {en:"Please",tgt:"Por favor",type:"phrase"},
+  {en:"Excuse me",tgt:"Perdón / Disculpe",type:"phrase"},
+];
+
+const tenseNames = {present:"Present Tense",past:"Past Tense",future:"Future Tense"};
+
+// Language config
+const langConfig = {
+  fr: {
+    code: 'fr', name: 'French', flag: '🇫🇷',
+    speechCode: 'fr-FR',
+    enToTgt: 'ENGLISH → FRENCH',
+    tgtToEn: 'FRENCH → ENGLISH',
+    conjugateLabel: '🇫🇷 CONJUGATE IN FRENCH',
+    modeLabelFwd: 'EN → FR',
+    modeLabelRev: 'FR → EN',
+    articles: /^(la |le |l'|l |les |un |une |des |je |j'|j )/,
+    uploadTitle: 'Add French Words',
+    wordlistTitle: 'My French Library',
+    vocab: frenchVocab,
+  },
+  es: {
+    code: 'es', name: 'Spanish', flag: '🇪🇸',
+    speechCode: 'es-ES',
+    enToTgt: 'ENGLISH → SPANISH',
+    tgtToEn: 'SPANISH → ENGLISH',
+    conjugateLabel: '🇪🇸 CONJUGATE IN SPANISH',
+    modeLabelFwd: 'EN → ES',
+    modeLabelRev: 'ES → EN',
+    articles: /^(la |el |los |las |un |una |unos |unas |yo |tú |él )/,
+    uploadTitle: 'Add Spanish Words',
+    wordlistTitle: 'My Spanish Library',
+    vocab: spanishVocab,
+  }
+};
+
+// ── TIER SYSTEM (swap currentTier when you add payments) ──
+const TIERS = {
+  free:    { label: 'Free',      limit: 50,    color: '#7a7890' },
+  basic:   { label: 'Basic $1',  limit: 150,   color: '#7b6cf6' },
+  premium: { label: 'Unlimited', limit: 99999, color: '#d4a843' },
+};
+let currentTier = 'free';
+function getUserLimit() { return TIERS[currentTier].limit; }
+
+// ── LOCALSTORAGE PERSISTENCE ───────────────────────
+const LS_FR = 'pb_user_vocab_fr';
+const LS_ES = 'pb_user_vocab_es';
+function saveUserVocab() {
+  try {
+    localStorage.setItem(LS_FR, JSON.stringify(userVocabFr));
+    localStorage.setItem(LS_ES, JSON.stringify(userVocabEs));
+  } catch(e) {}
+}
+function loadUserVocab() {
+  try {
+    const fr = localStorage.getItem(LS_FR);
+    const es = localStorage.getItem(LS_ES);
+    if (fr) userVocabFr = JSON.parse(fr);
+    if (es) userVocabEs = JSON.parse(es);
+  } catch(e) {}
+}
+function deleteUserWord(lang, index) {
+  if (lang === 'fr') userVocabFr.splice(index, 1);
+  else userVocabEs.splice(index, 1);
+  saveUserVocab();
+  const userExtra = currentLang === 'fr' ? userVocabFr : userVocabEs;
+  vocab = [...langConfig[currentLang].vocab, ...userExtra];
+  renderWordList();
+  updateLimitBar();
+}
+function updateLimitBar() {
+  const userExtra = currentLang === 'fr' ? userVocabFr : userVocabEs;
+  const used = userExtra.length;
+  const limit = getUserLimit();
+  const tier = TIERS[currentTier];
+  const pct = Math.min(100, (used / Math.max(limit,1)) * 100);
+  const isUnlimited = limit >= 99999;
+  const el = document.getElementById('limitBar');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:12px;color:var(--muted);">My imported words</span>
+      <span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${tier.color}22;color:${tier.color};font-weight:600;border:1px solid ${tier.color}44;">${tier.label}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;">
+      <span>${used} imported</span>
+      <span>${isUnlimited ? 'Unlimited' : used + ' / ' + limit}</span>
+    </div>
+    <div style="height:4px;background:var(--card);border-radius:2px;overflow:hidden;">
+      <div style="height:100%;width:${isUnlimited?100:pct}%;background:${pct>=90&&!isUnlimited?'#e05c5c':tier.color};border-radius:2px;transition:width 0.4s;"></div>
+    </div>
+    ${pct >= 90 && !isUnlimited ? '<div style="font-size:11px;color:#e05c5c;margin-top:6px;">⚠️ Near limit — upgrade to add more words</div>' : ''}
+  `;
+}
+
+// ── STATE ──────────────────────────────────────────
+let currentLang = 'fr';
+let vocab = [...frenchVocab];
+let userVocabFr = [];
+let userVocabEs = [];
+let currentMode = 'en-tgt';
+let currentCard = null, currentTenseKey = null;
+let score = 0, streak = 0, cardIndex = 0, totalCards = 10;
+let sessionCards = [];
+let recognition = null, isListening = false, transcript = '';
+let stats = {correct:0,wrong:0,skipped:0};
+let awaitingNext = false;
+
+// ── LANGUAGE SWITCH ────────────────────────────────
+function switchLang(lang) {
+  if (lang === currentLang) return;
+  currentLang = lang;
+  const cfg = langConfig[lang];
+
+  // Body class for CSS theming
+  document.body.classList.toggle('spanish', lang === 'es');
+
+  // Update toggle buttons
+  document.getElementById('btnFr').classList.toggle('active', lang==='fr');
+  document.getElementById('btnEs').classList.toggle('active', lang==='es');
+
+  // Update mode bar labels
+  document.getElementById('modeEnTgt').textContent = cfg.modeLabelFwd;
+  document.getElementById('modeTgtEn').textContent = cfg.modeLabelRev;
+
+  // Update upload + wordlist titles
+  document.getElementById('uploadTitle').textContent = cfg.uploadTitle;
+  document.getElementById('wordlistTitle').textContent = cfg.wordlistTitle;
+
+  // Rebuild vocab pool with persisted user words
+  const userExtra = lang === 'fr' ? userVocabFr : userVocabEs;
+  vocab = [...cfg.vocab, ...userExtra];
+
+  // Reset session
+  score=0; streak=0; stats={correct:0,wrong:0,skipped:0};
+  document.getElementById('scoreDisplay').textContent=0;
+  currentMode='en-tgt';
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-mode="en-tgt"]').classList.add('active');
+
+  showView('practice');
+  newSession();
+}
+
+// ── SPEECH ─────────────────────────────────────────
+function initSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    document.getElementById('speechWarning').style.display = 'block';
+    document.getElementById('micBtn').style.opacity = '0.3';
+    document.getElementById('micBtn').style.pointerEvents = 'none';
+    document.getElementById('micLabel').textContent = '⚠️ Speech not supported — type your answer above';
+    return;
+  }
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onresult = e => {
+    let interim='', final='';
+    for (let i=e.resultIndex;i<e.results.length;i++) {
+      if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    transcript=(final||interim).trim();
+    document.getElementById('typeInput').value=transcript;
+    if(!awaitingNext) document.getElementById('submitBtn').disabled=!transcript;
+  };
+  recognition.onstart = () => {
+    isListening=true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('micBtn').textContent='⏹️';
+    document.getElementById('micLabel').textContent='🔴 Listening… speak now — tap ⏹️ to stop';
+    document.getElementById('typeInput').value='';
+    document.getElementById('typeInput').placeholder='Listening…';
+    document.getElementById('inputRow').classList.add('listening');
+  };
+  recognition.onend = () => {
+    isListening=false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micBtn').textContent='🎙️';
+    document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+    document.getElementById('typeInput').placeholder='Speak or type your answer…';
+    document.getElementById('inputRow').classList.remove('listening');
+  };
+  recognition.onerror = e => {
+    isListening=false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micBtn').textContent='🎙️';
+    document.getElementById('inputRow').classList.remove('listening');
+    document.getElementById('micLabel').textContent = e.error==='not-allowed'
+      ? '⚠️ Mic blocked — type your answer above'
+      : '🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+    document.getElementById('typeInput').placeholder='Speak or type your answer…';
+  };
+}
+
+function toggleListening() {
+  if(!recognition) return;
+  if(awaitingNext) { nextCard(); return; }
+  if(isListening) { recognition.stop(); return; }
+  transcript='';
+  document.getElementById('typeInput').value='';
+  document.getElementById('submitBtn').disabled=true;
+  // Set correct language for recognition
+  const cfg = langConfig[currentLang];
+  recognition.lang = (currentMode==='tgt-en') ? 'en-US' : cfg.speechCode;
+  recognition.start();
+}
+
+function onTypeInput(val) {
+  transcript=val.trim();
+  document.getElementById('submitBtn').disabled=!transcript;
+}
+
+// ── FUZZY MATCH ────────────────────────────────────
+function normalize(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
+function levenshtein(a,b) {
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i===0?j:j===0?i:0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+function stripArticles(s) {
+  return s.replace(langConfig[currentLang].articles,'');
+}
+function isFuzzyMatch(spoken, correct) {
+  const a=normalize(spoken);
+  const variants=correct.split('/').map(v=>normalize(v.trim()));
+  for(const v of variants) {
+    const threshold=Math.max(Math.floor(v.length*0.3),2);
+    if(levenshtein(a,v)<=threshold) return true;
+    if(levenshtein(a,stripArticles(v))<=threshold) return true;
+    if(levenshtein(stripArticles(a),v)<=threshold) return true;
+  }
+  return false;
+}
+
+// ── CARD LOGIC ─────────────────────────────────────
+function buildSession() {
+  let pool=[...vocab];
+  if(currentMode==='phrases') pool=vocab.filter(v=>v.type==='phrase');
+  else if(currentMode==='tense') pool=vocab.filter(v=>v.tenses);
+  else if(currentMode!=='random') pool=vocab.filter(v=>v.type!=='phrase');
+  pool=pool.sort(()=>Math.random()-0.5);
+  sessionCards=pool.slice(0,Math.min(10,pool.length));
+  totalCards=sessionCards.length;
+  cardIndex=0;
+}
+
+function loadCard() {
+  awaitingNext=false;
+  if(cardIndex>=sessionCards.length){showSessionEnd();return;}
+  currentCard=sessionCards[cardIndex];
+  currentTenseKey=null;
+  const card=document.getElementById('flashCard');
+  card.classList.remove('correct','wrong');
+  card.classList.add('card-animate');
+  setTimeout(()=>card.classList.remove('card-animate'),300);
+  document.getElementById('resultBanner').className='result-banner';
+  transcript='';
+  document.getElementById('typeInput').value='';
+  document.getElementById('typeInput').placeholder='Speak or type your answer…';
+  document.getElementById('submitBtn').disabled=true;
+  document.getElementById('submitBtn').textContent='Check Answer';
+  document.getElementById('submitBtn').onclick=submitAnswer;
+  document.getElementById('micBtn').textContent='🎙️';
+  document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+
+  const cfg=langConfig[currentLang];
+  const tenseEl=document.getElementById('cardTense');
+  let dirText,prompt,typeText;
+
+  if(currentMode==='tense' && currentCard.tenses) {
+    const keys=Object.keys(currentCard.tenses);
+    currentTenseKey=keys[Math.floor(Math.random()*keys.length)];
+    dirText=cfg.conjugateLabel;
+    prompt=currentCard.en;
+    typeText='verb';
+    tenseEl.style.display='inline-block';
+    tenseEl.textContent=tenseNames[currentTenseKey];
+  } else {
+    tenseEl.style.display='none';
+    if(currentMode==='tgt-en') {
+      dirText=cfg.tgtToEn;
+      prompt=currentCard.tgt;
+      typeText=currentCard.type;
+    } else {
+      dirText=cfg.enToTgt;
+      prompt=currentCard.en;
+      typeText=currentCard.type;
+    }
+  }
+  document.getElementById('cardDirection').textContent=dirText;
+  document.getElementById('cardWord').textContent=prompt;
+  document.getElementById('cardType').textContent=typeText;
+  const pct=((cardIndex+1)/totalCards)*100;
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=`Card ${cardIndex+1} of ${totalCards}`;
+  document.getElementById('streakLabel').textContent=`🔥 ${streak} streak`;
+}
+
+function speakPrompt() {
+  const word=document.getElementById('cardWord').textContent;
+  const cfg=langConfig[currentLang];
+  const lang=(currentMode==='tgt-en')?cfg.speechCode:'en-US';
+  const utt=new SpeechSynthesisUtterance(word);
+  utt.lang=lang; utt.rate=0.85;
+  window.speechSynthesis.speak(utt);
+}
+
+function submitAnswer() {
+  transcript=document.getElementById('typeInput').value.trim();
+  if(!transcript) return;
+  let correctAnswer;
+  if(currentTenseKey) correctAnswer=currentCard.tenses[currentTenseKey];
+  else if(currentMode==='tgt-en') correctAnswer=currentCard.en;
+  else correctAnswer=currentCard.tgt;
+
+  const isCorrect=isFuzzyMatch(transcript,correctAnswer);
+  const card=document.getElementById('flashCard');
+  const banner=document.getElementById('resultBanner');
+
+  if(isCorrect) {
+    score+=10; streak++; stats.correct++;
+    card.classList.add('correct');
+    banner.className='result-banner correct-banner show';
+    document.getElementById('resultIcon').textContent='✅';
+    document.getElementById('resultText').innerHTML=`<b>Correct! +10 pts</b>The answer is: <em>${correctAnswer}</em><br><span class="heard">You said: "${transcript}"</span>`;
+  } else {
+    streak=0; stats.wrong++;
+    card.classList.add('wrong');
+    banner.className='result-banner wrong-banner show';
+    document.getElementById('resultIcon').textContent='❌';
+    document.getElementById('resultText').innerHTML=`<b>Not quite!</b>Correct answer: <em>${correctAnswer}</em><br><span class="heard">You said: "${transcript}"</span>`;
+  }
+  document.getElementById('scoreDisplay').textContent=score;
+  document.getElementById('streakLabel').textContent=`🔥 ${streak} streak`;
+
+  // Speak the correct answer back
+  const cfg=langConfig[currentLang];
+  const spkLang=(currentTenseKey||currentMode!=='tgt-en')?cfg.speechCode:'en-US';
+  const utt=new SpeechSynthesisUtterance(correctAnswer);
+  utt.lang=spkLang; utt.rate=0.8;
+  setTimeout(()=>window.speechSynthesis.speak(utt),400);
+
+  awaitingNext=true;
+  document.getElementById('submitBtn').textContent='Next Card →';
+  document.getElementById('submitBtn').disabled=false;
+  document.getElementById('submitBtn').onclick=nextCard;
+  document.getElementById('micBtn').textContent='▶️';
+  document.getElementById('micLabel').textContent='Tap ▶️ or "Next Card" to continue';
+}
+
+function nextCard() { cardIndex++; loadCard(); }
+function skipCard() {
+  stats.skipped++; streak=0;
+  document.getElementById('streakLabel').textContent='🔥 0 streak';
+  nextCard();
+}
+
+function showSessionEnd() {
+  const card=document.getElementById('flashCard');
+  const pct=stats.correct+stats.wrong>0?Math.round((stats.correct/(stats.correct+stats.wrong))*100):0;
+  const cfg=langConfig[currentLang];
+  card.innerHTML=`
+    <div style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:10px;">${pct>=70?'🎉':'💪'}</div>
+      <div class="card-direction">SESSION COMPLETE ${cfg.flag}</div>
+      <div class="card-word" style="font-size:28px;margin:10px 0;">${score} pts</div>
+      <div style="color:var(--muted);font-size:14px;line-height:2.2;">
+        ✅ ${stats.correct} correct &nbsp; ❌ ${stats.wrong} missed &nbsp; ⏭️ ${stats.skipped} skipped<br>
+        <span style="color:var(--accent);">${pct}% accuracy</span>
+      </div>
+    </div>`;
+  document.getElementById('submitBtn').textContent='New Session →';
+  document.getElementById('submitBtn').disabled=false;
+  document.getElementById('submitBtn').onclick=newSession;
+  awaitingNext=false;
+}
+
+function newSession() {
+  score=0; streak=0; stats={correct:0,wrong:0,skipped:0};
+  document.getElementById('scoreDisplay').textContent=0;
+  buildSession();
+  document.getElementById('typeInput').value='';
+  document.getElementById('typeInput').placeholder='Speak or type your answer…';
+  document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+  loadCard();
+}
+
+// ── VIEW SWITCHING ──────────────────────────────────
+function showView(view) {
+  document.getElementById('practiceView').style.display=view==='practice'?'flex':'none';
+  document.getElementById('statsView').classList.toggle('active',view==='stats');
+  document.getElementById('wordlistView').classList.toggle('active',view==='words');
+  ['navPractice','navStats','navWords'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  if(view==='practice') document.getElementById('navPractice').classList.add('active');
+  if(view==='stats') {
+    document.getElementById('navStats').classList.add('active');
+    document.getElementById('sCorrect').textContent=stats.correct;
+    document.getElementById('sWrong').textContent=stats.wrong;
+    document.getElementById('sScore').textContent=score;
+    document.getElementById('sLibrary').textContent=vocab.length;
+  }
+  if(view==='words') {
+    document.getElementById('navWords').classList.add('active');
+    renderWordList();
+    updateLimitBar();
+  }
+}
+
+function renderWordList() {
+  const container=document.getElementById('wordlistContent');
+  const cfg=langConfig[currentLang];
+  const builtIn=cfg.vocab;
+  const userExtra=currentLang==='fr'?userVocabFr:userVocabEs;
+  updateLimitBar();
+  let html='';
+  if(userExtra.length>0){
+    html+='<div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding:0 2px;">Your imported words</div>';
+    html+=userExtra.map((v,i)=>`
+      <div class="word-row">
+        <div style="flex:1;min-width:0;"><div class="word-en">${v.en}</div><div class="word-target">${v.tgt}</div></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div class="word-badge">${v.type}</div>
+          <button onclick="deleteUserWord('${currentLang}',${i})" title="Delete"
+            style="background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.3);color:#e05c5c;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+      </div>`).join('');
+    html+='<div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;padding:0 2px;">Built-in words</div>';
+  }
+  html+=builtIn.map(v=>`
+    <div class="word-row" style="opacity:0.7;">
+      <div style="flex:1;min-width:0;"><div class="word-en">${v.en}</div><div class="word-target">${v.tgt}</div></div>
+      <div class="word-badge">${v.type}</div>
+    </div>`).join('');
+  container.innerHTML=html;
+}
+
+function setMode(mode,btn) {
+  currentMode=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  newSession();
+}
+
+// ── IMPORT ──────────────────────────────────────────
+function openUpload() { document.getElementById('uploadPanel').classList.add('open'); }
+function closeUpload() { document.getElementById('uploadPanel').classList.remove('open'); }
+function importWords() {
+  const raw=document.getElementById('uploadInput').value.trim();
+  if(!raw) return;
+  let imported=0, skipped=0;
+  const userStore = currentLang==='fr' ? userVocabFr : userVocabEs;
+  const limit = getUserLimit();
+  for(const line of raw.split('\n').filter(l=>l.trim())) {
+    if(userStore.length >= limit) { skipped++; continue; }
+    const parts=line.split('|').map(p=>p.trim());
+    if(parts.length<2) continue;
+    const [en,tgt,type='word',tenseNote=''] = parts;
+    const entry={en,tgt,type:type.toLowerCase()};
+    if(tenseNote && tenseNote.includes('/')) {
+      const [present,past,future]=tenseNote.split('/').map(t=>t.trim());
+      entry.tenses={present:present||'',past:past||'',future:future||''};
+    }
+    userStore.push(entry);
+    vocab.push(entry);
+    imported++;
+  }
+  saveUserVocab();
+  closeUpload();
+  document.getElementById('uploadInput').value='';
+  let msg = `✅ Imported ${imported} words into your ${langConfig[currentLang].name} library!`;
+  if(skipped>0) msg += `\n\n⚠️ ${skipped} words skipped — you've reached your ${limit}-word limit.\nUpgrade your plan to add more.`;
+  alert(msg);
+  updateLimitBar();
+}
+
+// ── INIT ────────────────────────────────────────────
+loadUserVocab();
+vocab = [...frenchVocab, ...userVocabFr]; // start with French + any saved words
+initSpeech();
+buildSession();
+loadCard();
+</script>
+</body>
+</html>
