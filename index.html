@@ -2,12 +2,13 @@
 <!--
   ╔══════════════════════════════════════════════════════╗
   ║  ParleBien — Verbal Learning Platform                ║
-  ║  Version:  1.0.6                                     ║
+  ║  Version:  1.0.7                                     ║
   ║  Released: 2025-06-05                                ║
   ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
   ║  Live:     parlebien.com                             ║
   ╠══════════════════════════════════════════════════════╣
   ║  Changelog:                                          ║
+  ║  1.0.7 — Number word↔digit fuzzy match, buildSession   ║
   ║  1.0.6 — Hard reset card HTML on set activate          ║
   ║  1.0.5 — Fixed setsView outside app div (root cause)  ║
   ║  1.0.4 — Fixed sets CSS and activateSet state reset   ║
@@ -798,7 +799,7 @@ const langConfig = {
 };
 
 // ── VERSION ─────────────────────────────────────────
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 const APP_RELEASE = '2025-06-05';
 
 // ── TIER SYSTEM (swap currentTier when you add payments) ──
@@ -982,6 +983,44 @@ function onTypeInput(val) {
 }
 
 // ── FUZZY MATCH ────────────────────────────────────
+// Number word ↔ digit equivalence maps
+const NUM_MAP_EN = {
+  '0':'zero','1':'one','2':'two','3':'three','4':'four',
+  '5':'five','6':'six','7':'seven','8':'eight','9':'nine','10':'ten',
+  '11':'eleven','12':'twelve','13':'thirteen','14':'fourteen','15':'fifteen',
+  '16':'sixteen','17':'seventeen','18':'eighteen','19':'nineteen','20':'twenty',
+  '30':'thirty','40':'forty','50':'fifty','60':'sixty','70':'seventy',
+  '80':'eighty','90':'ninety','100':'one hundred',
+  // reverse
+  'zero':'0','one':'1','two':'2','three':'3','four':'4',
+  'five':'5','six':'6','seven':'7','eight':'8','nine':'9','ten':'10',
+};
+const NUM_MAP_FR = {
+  '0':'zéro','1':'un','2':'deux','3':'trois','4':'quatre',
+  '5':'cinq','6':'six','7':'sept','8':'huit','9':'neuf','10':'dix',
+  '11':'onze','12':'douze','13':'treize','14':'quatorze','15':'quinze',
+  '16':'seize','17':'dix-sept','18':'dix-huit','19':'dix-neuf','20':'vingt',
+  '30':'trente','40':'quarante','50':'cinquante','60':'soixante',
+  '80':'quatre-vingts','100':'cent','1000':'mille',
+  // reverse
+  'zéro':'0','un':'1','deux':'2','trois':'3','quatre':'4',
+  'cinq':'5','six':'6','sept':'7','huit':'8','neuf':'9','dix':'10',
+};
+
+function expandNumber(str) {
+  // Returns array of equivalent forms for a number word or digit
+  const s = str.trim().toLowerCase();
+  const forms = [s];
+  if (NUM_MAP_EN[s]) forms.push(NUM_MAP_EN[s]);
+  if (NUM_MAP_FR[s]) forms.push(NUM_MAP_FR[s]);
+  // Also handle digit spoken as word (speech API sometimes returns digits)
+  if (/^\d+$/.test(s)) {
+    if (NUM_MAP_EN[s]) forms.push(NUM_MAP_EN[s]);
+    if (NUM_MAP_FR[s]) forms.push(NUM_MAP_FR[s]);
+  }
+  return [...new Set(forms)];
+}
+
 function normalize(str) {
   return str.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -998,41 +1037,63 @@ function stripArticles(s) {
   return s.replace(langConfig[currentLang].articles,'');
 }
 function isFuzzyMatch(spoken, correct) {
-  const a=normalize(spoken);
-  const variants=correct.split('/').map(v=>normalize(v.trim()));
-  for(const v of variants) {
-    const threshold=Math.max(Math.floor(v.length*0.3),2);
-    if(levenshtein(a,v)<=threshold) return true;
-    if(levenshtein(a,stripArticles(v))<=threshold) return true;
-    if(levenshtein(stripArticles(a),v)<=threshold) return true;
+  const a = normalize(spoken);
+  const variants = correct.split('/').map(v => normalize(v.trim()));
+
+  // Expand spoken and correct with numeric equivalents
+  const spokenForms = expandNumber(spoken).map(normalize);
+  const correctForms = [];
+  variants.forEach(v => {
+    correctForms.push(v);
+    expandNumber(v).forEach(e => correctForms.push(normalize(e)));
+  });
+  const uniqueCorrect = [...new Set(correctForms)];
+
+  for (const spoken_form of spokenForms) {
+    for (const v of uniqueCorrect) {
+      if (!v) continue;
+      const threshold = Math.max(Math.floor(v.length * 0.3), 2);
+      if (levenshtein(spoken_form, v) <= threshold) return true;
+      if (levenshtein(spoken_form, stripArticles(v)) <= threshold) return true;
+      if (levenshtein(stripArticles(spoken_form), v) <= threshold) return true;
+    }
   }
   return false;
 }
 
 // ── CARD LOGIC ─────────────────────────────────────
 function buildSession() {
-  let pool=[...vocab];
-  // When a specific set is active, use ALL its words regardless of type
-  // Only apply type filters when using the full mixed library
-  if(activeSetId === null) {
-    if(currentMode==='phrases') pool=vocab.filter(v=>v.type==='phrase');
-    else if(currentMode==='tense') pool=vocab.filter(v=>v.tenses);
-    else if(currentMode!=='random') pool=vocab.filter(v=>v.type!=='phrase');
+  let pool = [...vocab];
+
+  if (activeSetId === null) {
+    // Full library — apply mode filters
+    if (currentMode === 'phrases') pool = vocab.filter(v => v.type === 'phrase');
+    else if (currentMode === 'tense') pool = vocab.filter(v => v.tenses);
+    else if (currentMode !== 'random') pool = vocab.filter(v => v.type !== 'phrase');
   } else {
-    // For tense mode within a set, only show verbs that have tenses
-    if(currentMode==='tense') pool=vocab.filter(v=>v.tenses);
-    // All other modes: use everything in the set
+    // Specific set active — NEVER filter by type, always use all words in set
+    // Exception: tense mode only shows verbs that have conjugations
+    if (currentMode === 'tense') {
+      const tensed = vocab.filter(v => v.tenses);
+      // If set has verbs, use them; otherwise fall back to all words in set
+      pool = tensed.length > 0 ? tensed : [...vocab];
+    }
+    // EN→FR, FR→EN, phrases, random — use everything in the set
   }
-  pool=pool.sort(()=>Math.random()-0.5);
-  // Use all cards in set if 10 or fewer, otherwise pick 10
-  sessionCards=pool.slice(0,Math.min(Math.max(pool.length,1),pool.length<=10?pool.length:10));
-  if(sessionCards.length===0) {
-    // Fallback: if still empty (e.g. tense mode on phrase-only set), use full pool
-    console.log('[PB] buildSession fallback — mode incompatible with set, using full pool');
-    sessionCards=[...vocab].sort(()=>Math.random()-0.5).slice(0,10);
+
+  pool = pool.sort(() => Math.random() - 0.5);
+
+  // Use all words if set has 20 or fewer, otherwise pick 10
+  const maxCards = pool.length <= 20 ? pool.length : 10;
+  sessionCards = pool.slice(0, Math.max(maxCards, 1));
+
+  // Final fallback — should never happen but safety net
+  if (sessionCards.length === 0) {
+    sessionCards = [...vocab].sort(() => Math.random() - 0.5).slice(0, 10);
   }
-  totalCards=sessionCards.length;
-  cardIndex=0;
+
+  totalCards = sessionCards.length;
+  cardIndex = 0;
 }
 
 function loadCard() {
