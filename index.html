@@ -798,7 +798,7 @@ const langConfig = {
 };
 
 // ── VERSION ─────────────────────────────────────────
-const APP_VERSION = '1.0.6d';
+const APP_VERSION = '1.0.6';
 const APP_RELEASE = '2025-06-05';
 
 // ── TIER SYSTEM (swap currentTier when you add payments) ──
@@ -1012,22 +1012,32 @@ function isFuzzyMatch(spoken, correct) {
 // ── CARD LOGIC ─────────────────────────────────────
 function buildSession() {
   let pool=[...vocab];
-  if(currentMode==='phrases') pool=vocab.filter(v=>v.type==='phrase');
-  else if(currentMode==='tense') pool=vocab.filter(v=>v.tenses);
-  else if(currentMode!=='random') pool=vocab.filter(v=>v.type!=='phrase');
+  // When a specific set is active, use ALL its words regardless of type
+  // Only apply type filters when using the full mixed library
+  if(activeSetId === null) {
+    if(currentMode==='phrases') pool=vocab.filter(v=>v.type==='phrase');
+    else if(currentMode==='tense') pool=vocab.filter(v=>v.tenses);
+    else if(currentMode!=='random') pool=vocab.filter(v=>v.type!=='phrase');
+  } else {
+    // For tense mode within a set, only show verbs that have tenses
+    if(currentMode==='tense') pool=vocab.filter(v=>v.tenses);
+    // All other modes: use everything in the set
+  }
   pool=pool.sort(()=>Math.random()-0.5);
-  sessionCards=pool.slice(0,Math.min(10,pool.length));
+  // Use all cards in set if 10 or fewer, otherwise pick 10
+  sessionCards=pool.slice(0,Math.min(Math.max(pool.length,1),pool.length<=10?pool.length:10));
+  if(sessionCards.length===0) {
+    // Fallback: if still empty (e.g. tense mode on phrase-only set), use full pool
+    console.log('[PB] buildSession fallback — mode incompatible with set, using full pool');
+    sessionCards=[...vocab].sort(()=>Math.random()-0.5).slice(0,10);
+  }
   totalCards=sessionCards.length;
   cardIndex=0;
 }
 
 function loadCard() {
-  console.log('[PB] loadCard called: cardIndex='+cardIndex+' sessionCards.length='+sessionCards.length+' awaitingNext='+awaitingNext);
   awaitingNext=false;
-  if(cardIndex>=sessionCards.length){
-    console.log('[PB] SESSION END triggered inside loadCard');
-    showSessionEnd();return;
-  }
+  if(cardIndex>=sessionCards.length){showSessionEnd();return;}
   currentCard=sessionCards[cardIndex];
   currentTenseKey=null;
   const card=document.getElementById('flashCard');
@@ -1342,11 +1352,8 @@ function activateSet(setId) {
 
   renderSets();
   buildSession();
-  console.log('[PB] activateSet: vocab length='+vocab.length+' sessionCards='+sessionCards.length+' cardIndex='+cardIndex+' awaitingNext='+awaitingNext);
   showView('practice');
-  console.log('[PB] about to call loadCard, submitBtn disabled='+document.getElementById('submitBtn').disabled+' text='+document.getElementById('submitBtn').textContent);
   loadCard();
-  console.log('[PB] loadCard done, submitBtn disabled='+document.getElementById('submitBtn').disabled+' text='+document.getElementById('submitBtn').textContent);
 }
 
 function filterSets(lang, btn) {
