@@ -1,2 +1,2 @@
 # parlebien
-program for vocal and visual learning of words 
+flashcard based program for vocal and visual learning of words 
