@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════╗
+  ║  ParleBien — Landing Page                            ║
+  ║  Version:  1.0.0                                     ║
+  ║  Released: 2026-06-05                                ║
+  ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
+  ║  Live:     parlebien.com                             ║
+  ╚══════════════════════════════════════════════════════╝
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParleBien — Speak Well. Speak With Confidence.</title>
+<meta name="description" content="Voice-first language flashcards for French and Spanish. Hear it. Process it. Say it. The proven method, reimagined for the age of AI.">
+
+<!-- Google Analytics 4 — replace G-XXXXXXXXXX with your Measurement ID -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ── RESET & BASE ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0e0e14;
+  --surface: #16161f;
+  --card: #1c1c28;
+  --accent: #d4a843;
+  --accent2: #7b6cf6;
+  --correct: #4caf7d;
+  --text: #f0eee8;
+  --muted: #7a7890;
+  --border: rgba(255,255,255,0.07);
+  --max: 960px;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+
+/* ── HEADER ── */
+.site-header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(14,14,20,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 900;
+  color: var(--accent);
+}
+.logo span { color: var(--text); }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.btn-launch {
+  background: var(--accent); color: #0e0e14;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 700;
+  padding: 9px 20px; border-radius: 24px;
+  border: none; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+.btn-launch:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-outline {
+  background: transparent; color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500;
+  padding: 9px 16px; border-radius: 24px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.btn-outline:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+/* ── SECTIONS ── */
+section { width: 100%; }
+.container { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+/* ── HERO ── */
+.hero {
+  padding: 96px 24px 80px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(212,168,67,0.08) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent);
+  background: rgba(212,168,67,0.1);
+  border: 1px solid rgba(212,168,67,0.2);
+  border-radius: 20px; padding: 5px 16px;
+  margin-bottom: 28px;
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(38px, 7vw, 72px);
+  font-weight: 900; line-height: 1.1;
+  margin-bottom: 24px;
+}
+.hero h1 em { color: var(--accent); font-style: normal; }
+.hero-sub {
+  font-size: clamp(16px, 2.5vw, 20px);
+  color: var(--muted); max-width: 560px;
+  margin: 0 auto 40px; line-height: 1.7;
+}
+.hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn-hero {
+  background: var(--accent); color: #0e0e14;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 700;
+  padding: 14px 32px; border-radius: 32px;
+  border: none; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-hero:hover { opacity: 0.88; transform: translateY(-2px); }
+.btn-hero-ghost {
+  background: transparent; color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 500;
+  padding: 14px 28px; border-radius: 32px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.btn-hero-ghost:hover { border-color: rgba(255,255,255,0.25); transform: translateY(-2px); }
+.hero-proof {
+  margin-top: 52px;
+  display: flex; justify-content: center; align-items: center;
+  gap: 32px; flex-wrap: wrap;
+}
+.proof-item { text-align: center; }
+.proof-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; font-weight: 900; color: var(--accent);
+  display: block;
+}
+.proof-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.proof-divider { width: 1px; height: 36px; background: var(--border); }
+
+/* ── LOOP VISUAL ── */
+.loop-section {
+  padding: 72px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.section-label {
+  text-align: center;
+  font-size: 11px; font-weight: 700; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent2);
+  margin-bottom: 14px;
+}
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 700; text-align: center;
+  margin-bottom: 14px; line-height: 1.2;
+}
+.section-sub {
+  text-align: center; color: var(--muted);
+  font-size: 16px; max-width: 540px;
+  margin: 0 auto 52px; line-height: 1.7;
+}
+.loop-steps {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; flex-wrap: wrap; max-width: 700px; margin: 0 auto;
+}
+.loop-step {
+  flex: 1; min-width: 160px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px 20px; text-align: center;
+  position: relative;
+}
+.loop-icon {
+  font-size: 32px; margin-bottom: 12px; display: block;
+}
+.loop-step h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; font-weight: 700; margin-bottom: 8px; color: var(--accent);
+}
+.loop-step p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.loop-arrow {
+  font-size: 20px; color: var(--border);
+  padding: 0 8px; flex-shrink: 0;
+  align-self: center;
+}
+
+/* ── SCIENCE ── */
+.science-section { padding: 80px 24px; }
+.science-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px; max-width: var(--max); margin: 0 auto;
+}
+.science-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 32px 28px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.science-card:hover { border-color: rgba(212,168,67,0.3); transform: translateY(-3px); }
+.science-card::before {
+  content: '';
+  position: absolute; top: -40px; right: -40px;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle, rgba(212,168,67,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.science-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 44px; font-weight: 900;
+  color: var(--accent); opacity: 0.25;
+  line-height: 1; margin-bottom: 16px;
+}
+.science-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; font-weight: 700;
+  margin-bottom: 10px;
+}
+.science-card p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+.science-tag {
+  display: inline-block; margin-top: 16px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--accent);
+  background: rgba(212,168,67,0.1); border-radius: 8px;
+  padding: 4px 10px;
+}
+
+/* ── FEATURES ── */
+.features-section {
+  padding: 80px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; max-width: var(--max); margin: 0 auto;
+}
+.feature-card {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px 22px;
+  transition: border-color 0.2s;
+}
+.feature-card:hover { border-color: rgba(123,108,246,0.3); }
+.feature-icon { font-size: 26px; margin-bottom: 12px; display: block; }
+.feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.feature-card p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+.feature-badge {
+  display: inline-block; margin-top: 12px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--accent2);
+  background: rgba(123,108,246,0.12); border-radius: 6px;
+  padding: 3px 8px;
+}
+
+/* ── WORD SETS PREVIEW ── */
+.sets-section { padding: 80px 24px; }
+.sets-filter {
+  display: flex; justify-content: center;
+  gap: 8px; margin-bottom: 32px; flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 7px 18px; border-radius: 20px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-btn.active { background: var(--accent); color: #0e0e14; border-color: var(--accent); font-weight: 700; }
+.sets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px; max-width: var(--max); margin: 0 auto 36px;
+}
+.set-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 22px 20px;
+  transition: border-color 0.2s, transform 0.2s; cursor: default;
+}
+.set-card:hover { border-color: rgba(212,168,67,0.3); transform: translateY(-2px); }
+.set-emoji { font-size: 26px; margin-bottom: 10px; display: block; }
+.set-lang {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 6px; margin-bottom: 8px;
+}
+.set-lang.fr { color: var(--accent); background: rgba(212,168,67,0.1); }
+.set-lang.es { color: #e8453c; background: rgba(232,69,60,0.1); }
+.set-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.set-card p { font-size: 12px; color: var(--muted); }
+.sets-cta { text-align: center; }
+
+/* ── FLASHCARD ORDERS ── */
+.orders-section {
+  padding: 80px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; max-width: var(--max); margin: 0 auto 36px;
+}
+.order-card {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 28px 24px; text-align: center;
+  transition: border-color 0.2s, transform 0.2s;
+  position: relative; overflow: hidden;
+}
+.order-card:hover { border-color: rgba(212,168,67,0.3); transform: translateY(-3px); }
+.order-card.featured { border-color: rgba(212,168,67,0.4); }
+.order-card.featured::after {
+  content: 'POPULAR';
+  position: absolute; top: 14px; right: 14px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+  color: #0e0e14; background: var(--accent);
+  padding: 3px 8px; border-radius: 6px;
+}
+.order-icon { font-size: 32px; margin-bottom: 14px; display: block; }
+.order-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+.order-price {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px; font-weight: 900; color: var(--accent);
+  line-height: 1; margin: 12px 0 8px;
+}
+.order-price span { font-size: 14px; font-weight: 400; color: var(--muted); }
+.order-card p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+.order-tag {
+  display: inline-block; margin-top: 14px;
+  font-size: 11px; font-weight: 700; color: var(--correct);
+  background: rgba(76,175,125,0.1); border-radius: 6px;
+  padding: 4px 10px;
+}
+.orders-note {
+  text-align: center; font-size: 13px; color: var(--muted); margin-top: 16px;
+}
+.orders-cta { text-align: center; margin-top: 32px; }
+
+/* ── LINGUAKIDS TEASER ── */
+.linguakids-section {
+  padding: 80px 24px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.linguakids-section::before {
+  content: '';
+  position: absolute; bottom: -100px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(circle, rgba(123,108,246,0.08) 0%, transparent 65%);
+  pointer-events: none;
+}
+.coming-soon-badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent2);
+  background: rgba(123,108,246,0.12);
+  border: 1px solid rgba(123,108,246,0.25);
+  border-radius: 20px; padding: 5px 16px;
+  margin-bottom: 24px;
+}
+.linguakids-section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 900; margin-bottom: 16px; line-height: 1.15;
+}
+.linguakids-section h2 em { color: var(--accent2); font-style: normal; }
+.linguakids-section p {
+  color: var(--muted); font-size: 16px;
+  max-width: 500px; margin: 0 auto 36px; line-height: 1.7;
+}
+.email-form {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap; max-width: 440px; margin: 0 auto;
+}
+.email-input {
+  flex: 1; min-width: 220px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 24px; padding: 12px 20px;
+  color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.email-input::placeholder { color: var(--muted); }
+.email-input:focus { border-color: rgba(123,108,246,0.5); }
+.btn-waitlist {
+  background: var(--accent2); color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 700;
+  padding: 12px 24px; border-radius: 24px;
+  border: none; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s; white-space: nowrap;
+}
+.btn-waitlist:hover { opacity: 0.88; transform: translateY(-1px); }
+.email-note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+/* ── FOOTER ── */
+.site-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 36px 24px;
+}
+.footer-inner {
+  max-width: var(--max); margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+}
+.footer-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 900; color: var(--accent);
+}
+.footer-logo span { color: var(--muted); }
+.footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
+.footer-links a {
+  font-size: 13px; color: var(--muted);
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--text); }
+.footer-copy { font-size: 12px; color: var(--muted); }
+
+/* ── DIVIDER ── */
+.section-divider {
+  width: 40px; height: 2px;
+  background: var(--accent); opacity: 0.4;
+  margin: 20px auto 0; border-radius: 2px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .hero { padding: 64px 20px 56px; }
+  .loop-steps { flex-direction: column; align-items: stretch; max-width: 320px; }
+  .loop-arrow { transform: rotate(90deg); padding: 8px 0; text-align: center; }
+  .proof-divider { display: none; }
+  .hero-proof { gap: 20px; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+  .site-header .btn-outline { display: none; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ── HEADER ── -->
+<header class="site-header">
+  <a href="/" class="logo">Parle<span>Bien</span></a>
+  <div class="header-actions">
+    <a href="#sets"><button class="btn-outline">Browse Sets</button></a>
+    <a href="index.html"><button class="btn-launch">Launch App ›</button></a>
+  </div>
+</header>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-eyebrow">Voice-first language learning</div>
+  <h1>Speak well.<br><em>Speak with confidence.</em></h1>
+  <p class="hero-sub">
+    The flashcard method has worked for 200 years. ParleBien adds your voice.
+    Hear a word. Process it. Say it aloud. That's how languages are actually learned.
+  </p>
+  <div class="hero-cta">
+    <a href="index.html"><button class="btn-hero">Start Practising Free ›</button></a>
+    <a href="#science"><button class="btn-hero-ghost">Why it works</button></a>
+  </div>
+  <div class="hero-proof">
+    <div class="proof-item">
+      <span class="proof-num">12</span>
+      <span class="proof-label">pre-built word sets</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <span class="proof-num">2</span>
+      <span class="proof-label">languages — FR &amp; ES</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <span class="proof-num">5</span>
+      <span class="proof-label">practice modes</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <span class="proof-num">Free</span>
+      <span class="proof-label">to start today</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── THE LEARNING LOOP ── -->
+<section class="loop-section">
+  <div class="container">
+    <div class="section-label">The Learning Loop</div>
+    <h2 class="section-title">The sequence that makes it stick</h2>
+    <p class="section-sub">
+      Every interaction in ParleBien follows the same three steps —
+      the same sequence every human being uses to learn their first language.
+    </p>
+    <div class="loop-steps">
+      <div class="loop-step">
+        <span class="loop-icon">👁️</span>
+        <h3>See &amp; Hear</h3>
+        <p>The word is displayed and spoken aloud. Your auditory and visual memory both engage at once.</p>
+      </div>
+      <div class="loop-arrow">→</div>
+      <div class="loop-step">
+        <span class="loop-icon">🧠</span>
+        <h3>Process</h3>
+        <p>You search your memory for the meaning and translation. Active retrieval — not passive recognition.</p>
+      </div>
+      <div class="loop-arrow">→</div>
+      <div class="loop-step">
+        <span class="loop-icon">🗣️</span>
+        <h3>Speak</h3>
+        <p>You say the answer aloud. Motor memory locks it in. You don't just know the word — you own it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SCIENCE ── -->
+<section class="science-section" id="science">
+  <div class="container">
+    <div class="section-label">The Science</div>
+    <h2 class="section-title">Proven, not trendy</h2>
+    <p class="section-sub">
+      ParleBien isn't built around streaks and gamification.
+      It's built around three learning mechanisms that have been validated by over a century of research.
+    </p>
+    <div class="science-grid">
+
+      <div class="science-card">
+        <div class="science-num">01</div>
+        <h3>Spaced Repetition</h3>
+        <p>
+          Reviewing material at increasing intervals exploits the <em>spacing effect</em> —
+          the finding that memory is stronger when learning is distributed over time rather than crammed.
+          First documented by Hermann Ebbinghaus in 1885. Still the most powerful tool in learning science.
+        </p>
+        <span class="science-tag">Ebbinghaus, 1885</span>
+      </div>
+
+      <div class="science-card">
+        <div class="science-num">02</div>
+        <h3>Active Recall</h3>
+        <p>
+          Being required to <em>produce</em> an answer from memory — rather than recognise it from a list —
+          creates 2–3× stronger retention than passive reading or multiple choice.
+          Tapping a word teaches you to tap a word. Speaking it teaches you to speak it.
+        </p>
+        <span class="science-tag">2–3× retention boost</span>
+      </div>
+
+      <div class="science-card">
+        <div class="science-num">03</div>
+        <h3>Multisensory Encoding</h3>
+        <p>
+          When a word is seen, heard, and spoken simultaneously, three independent memory pathways
+          activate in a single moment. Multi-modal encoding produces memories that are stronger,
+          more accessible, and more resistant to forgetting.
+        </p>
+        <span class="science-tag">3 memory pathways</span>
+      </div>
+
+    </div>
+    <div class="section-divider"></div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="features-section">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+    <p class="section-sub">
+      Built for serious learners who want to actually speak the language —
+      not collect XP.
+    </p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <span class="feature-icon">🎙️</span>
+        <h3>Voice-First Input</h3>
+        <p>Speak your answers aloud. The app listens, evaluates your response, and scores it — with tolerance for accent and natural variation.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📚</span>
+        <h3>Custom Vocabulary</h3>
+        <p>Import your own words in seconds. Practice the vocabulary that matters to you — not a fixed curriculum someone else decided on.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔄</span>
+        <h3>5 Practice Modes</h3>
+        <p>English → Language, Language → English, Tense Practice, Phrases Mode, and Random. Each targets a different stage of retention.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔊</span>
+        <h3>Native Pronunciation</h3>
+        <p>Hear every word spoken by a native voice. Tap to repeat at full or slow speed until the sound is locked in your ear.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <h3>Progress Tracking</h3>
+        <p>Score, streak, and accuracy tracked across every session. See exactly where you're improving and what still needs work.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">✨</span>
+        <h3>AI Dataset Builder</h3>
+        <p>Type a topic — travel, cooking, fishing — and AI generates an instant 20-word set with conjugations. Ready to practise in seconds.</p>
+        <span class="feature-badge">Coming soon</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── WORD SETS PREVIEW ── -->
+<section class="sets-section" id="sets">
+  <div class="container">
+    <div class="section-label">Word Sets</div>
+    <h2 class="section-title">Start practising in 30 seconds</h2>
+    <p class="section-sub">
+      12 pre-built sets across French and Spanish — covering the words
+      you'll actually use. Free to browse, free to practise.
+    </p>
+
+    <div class="sets-filter">
+      <button class="filter-btn active" onclick="filterSets('all', this)">All Sets</button>
+      <button class="filter-btn" onclick="filterSets('fr', this)">🇫🇷 French</button>
+      <button class="filter-btn" onclick="filterSets('es', this)">🇪🇸 Spanish</button>
+    </div>
+
+    <div class="sets-grid" id="setsGrid">
+
+      <div class="set-card" data-lang="fr">
+        <span class="set-emoji">⭐</span>
+        <span class="set-lang fr">French</span>
+        <h3>Essential Survival</h3>
+        <p>20 words · The must-knows for any situation</p>
+      </div>
+
+      <div class="set-card" data-lang="fr">
+        <span class="set-emoji">☕</span>
+        <span class="set-lang fr">French</span>
+        <h3>Café &amp; Restaurant</h3>
+        <p>20 words · Order with confidence</p>
+      </div>
+
+      <div class="set-card" data-lang="fr">
+        <span class="set-emoji">🗺️</span>
+        <span class="set-lang fr">French</span>
+        <h3>Getting Around</h3>
+        <p>20 words · Navigate any city</p>
+      </div>
+
+      <div class="set-card" data-lang="fr">
+        <span class="set-emoji">🔢</span>
+        <span class="set-lang fr">French</span>
+        <h3>Numbers, Time &amp; Money</h3>
+        <p>20 words · The practical essentials</p>
+      </div>
+
+      <div class="set-card" data-lang="fr">
+        <span class="set-emoji">👨‍👩‍👧</span>
+        <span class="set-lang fr">French</span>
+        <h3>People &amp; Relationships</h3>
+        <p>20 words · Family, friends, and introductions</p>
+      </div>
+
+      <div class="set-card" data-lang="fr">
+        <span class="set-emoji">🔄</span>
+        <span class="set-lang fr">French</span>
+        <h3>Verbs in Action</h3>
+        <p>20 words · Core verbs with full conjugations</p>
+      </div>
+
+      <div class="set-card" data-lang="es">
+        <span class="set-emoji">⭐</span>
+        <span class="set-lang es">Spanish</span>
+        <h3>Essential Survival</h3>
+        <p>20 words · The must-knows for any situation</p>
+      </div>
+
+      <div class="set-card" data-lang="es">
+        <span class="set-emoji">☕</span>
+        <span class="set-lang es">Spanish</span>
+        <h3>Café &amp; Restaurant</h3>
+        <p>20 words · Order with confidence</p>
+      </div>
+
+      <div class="set-card" data-lang="es">
+        <span class="set-emoji">🗺️</span>
+        <span class="set-lang es">Spanish</span>
+        <h3>Getting Around</h3>
+        <p>20 words · Navigate any city</p>
+      </div>
+
+      <div class="set-card" data-lang="es">
+        <span class="set-emoji">🔢</span>
+        <span class="set-lang es">Spanish</span>
+        <h3>Numbers, Time &amp; Money</h3>
+        <p>20 words · The practical essentials</p>
+      </div>
+
+      <div class="set-card" data-lang="es">
+        <span class="set-emoji">👨‍👩‍👧</span>
+        <span class="set-lang es">Spanish</span>
+        <h3>People &amp; Relationships</h3>
+        <p>20 words · Family, friends, and introductions</p>
+      </div>
+
+      <div class="set-card" data-lang="es">
+        <span class="set-emoji">🔄</span>
+        <span class="set-lang es">Spanish</span>
+        <h3>Verbs in Action</h3>
+        <p>20 words · Core verbs with full conjugations</p>
+      </div>
+
+    </div>
+
+    <div class="sets-cta">
+      <a href="index.html"><button class="btn-hero">Practise These Sets Free ›</button></a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FLASHCARD ORDERS ── -->
+<section class="orders-section">
+  <div class="container">
+    <div class="section-label">Flashcard Orders</div>
+    <h2 class="section-title">Take your words offline</h2>
+    <p class="section-sub">
+      Your word list, in your hands. Order physical cards, a print-ready PDF,
+      or a digital export — from the words you've been practising.
+    </p>
+    <div class="orders-grid">
+
+      <div class="order-card">
+        <span class="order-icon">📄</span>
+        <h3>Digital Export</h3>
+        <div class="order-price">$1–2 <span>one-time</span></div>
+        <p>Your word set exported in Anki or Quizlet format. Import instantly into any flashcard platform.</p>
+        <span class="order-tag">~99% margin · instant delivery</span>
+      </div>
+
+      <div class="order-card featured">
+        <span class="order-icon">🖨️</span>
+        <h3>Print-Ready PDF</h3>
+        <div class="order-price">$3–5 <span>one-time</span></div>
+        <p>A formatted PDF in Avery card format, emailed instantly. Print at home or at any print shop.</p>
+        <span class="order-tag">~95% margin · instant delivery</span>
+      </div>
+
+      <div class="order-card">
+        <span class="order-icon">📬</span>
+        <h3>Print &amp; Ship</h3>
+        <div class="order-price">$12–15 <span>one-time</span></div>
+        <p>Professionally printed card stock with a ring hole, shipped to your door. Ready to use.</p>
+        <span class="order-tag">~40% margin · 3–7 day delivery</span>
+      </div>
+
+    </div>
+    <p class="orders-note">Flashcard ordering is coming soon — <a href="#waitlist" style="color:var(--accent);">get notified below.</a></p>
+  </div>
+</section>
+
+<!-- ── LINGUAKIDS TEASER ── -->
+<section class="linguakids-section" id="waitlist">
+  <div class="coming-soon-badge">Coming Soon</div>
+  <h2><em>LinguaKids</em> — for little learners</h2>
+  <p>
+    A children's version of ParleBien — bright, playful, and built for ages 3–12.
+    Age-appropriate word sets, image cards, and vocabulary milestones.
+    Join the waitlist and be first to know when it launches.
+  </p>
+  <form class="email-form" onsubmit="handleWaitlist(event)">
+    <input
+      class="email-input"
+      type="email"
+      placeholder="Your email address"
+      required
+      id="waitlistEmail"
+    >
+    <button class="btn-waitlist" type="submit">Join Waitlist</button>
+  </form>
+  <p class="email-note" id="waitlistMsg">No spam. Unsubscribe any time.</p>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-logo">Parle<span>Bien</span></div>
+    <div class="footer-links">
+      <a href="index.html">Launch App</a>
+      <a href="#sets">Word Sets</a>
+      <a href="#waitlist">LinguaKids</a>
+      <a href="mailto:feedback@parlebien.com">Feedback</a>
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+    </div>
+    <div class="footer-copy">© 2026 ParleBien. All rights reserved.</div>
+  </div>
+</footer>
+
+<script>
+// ── SET FILTER ──
+function filterSets(lang, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.set-card').forEach(card => {
+    if (lang === 'all' || card.dataset.lang === lang) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+// ── WAITLIST FORM ──
+function handleWaitlist(e) {
+  e.preventDefault();
+  const email = document.getElementById('waitlistEmail').value;
+  const msg = document.getElementById('waitlistMsg');
+  // TODO: wire up to Mailchimp / Formspree / Supabase when backend is live
+  // For now, show confirmation
+  msg.textContent = '✓ You\'re on the list! We\'ll be in touch.';
+  msg.style.color = '#4caf7d';
+  document.getElementById('waitlistEmail').value = '';
+  // GA4 event
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'waitlist_signup', { email_domain: email.split('@')[1] });
+  }
+}
+
+// ── GA4 EVENTS ──
+document.querySelectorAll('a[href="index.html"]').forEach(link => {
+  link.addEventListener('click', () => {
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'launch_app_click', { source: 'landing_page' });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
