@@ -2,10 +2,15 @@
 <!--
   ╔══════════════════════════════════════════════════════╗
   ║  ParleBien — Landing Page                            ║
-  ║  Version:  1.0.0                                     ║
+  ║  Version:  1.0.1                                     ║
   ║  Released: 2026-06-05                                ║
+  ║  Updated:  2026-06-06                                ║
   ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
   ║  Live:     parlebien.com                             ║
+  ╠══════════════════════════════════════════════════════╣
+  ║  Changelog:                                          ║
+  ║  1.0.1 — Fixed Launch App links: index.html→app.html ║
+  ║  1.0.0 — Initial landing page release                ║
   ╚══════════════════════════════════════════════════════╝
 -->
 <html lang="en">
@@ -471,7 +476,7 @@ section { width: 100%; }
   <a href="/" class="logo">Parle<span>Bien</span></a>
   <div class="header-actions">
     <a href="#sets"><button class="btn-outline">Browse Sets</button></a>
-    <a href="index.html"><button class="btn-launch">Launch App ›</button></a>
+    <a href="app.html"><button class="btn-launch">Launch App ›</button></a>
   </div>
 </header>
 
@@ -484,7 +489,7 @@ section { width: 100%; }
     Hear a word. Process it. Say it aloud. That's how languages are actually learned.
   </p>
   <div class="hero-cta">
-    <a href="index.html"><button class="btn-hero">Start Practising Free ›</button></a>
+    <a href="app.html"><button class="btn-hero">Start Practising Free ›</button></a>
     <a href="#science"><button class="btn-hero-ghost">Why it works</button></a>
   </div>
   <div class="hero-proof">
@@ -747,7 +752,7 @@ section { width: 100%; }
     </div>
 
     <div class="sets-cta">
-      <a href="index.html"><button class="btn-hero">Practise These Sets Free ›</button></a>
+      <a href="app.html"><button class="btn-hero">Practise These Sets Free ›</button></a>
     </div>
   </div>
 </section>
@@ -819,7 +824,7 @@ section { width: 100%; }
   <div class="footer-inner">
     <div class="footer-logo">Parle<span>Bien</span></div>
     <div class="footer-links">
-      <a href="index.html">Launch App</a>
+      <a href="app.html">Launch App</a>
       <a href="#sets">Word Sets</a>
       <a href="#waitlist">LinguaKids</a>
       <a href="mailto:feedback@parlebien.com">Feedback</a>
@@ -861,7 +866,7 @@ function handleWaitlist(e) {
 }
 
 // ── GA4 EVENTS ──
-document.querySelectorAll('a[href="index.html"]').forEach(link => {
+document.querySelectorAll('a[href="app.html"]').forEach(link => {
   link.addEventListener('click', () => {
     if (typeof gtag !== 'undefined') {
       gtag('event', 'launch_app_click', { source: 'landing_page' });
