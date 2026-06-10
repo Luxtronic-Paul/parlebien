@@ -472,6 +472,14 @@
 </div>
 
 <script>
+// ── ACCESS GATE — only active on the live domain ──
+(function() {
+  const liveHosts = ['parlebien.com', 'www.parlebien.com'];
+  if (liveHosts.includes(window.location.hostname) && !sessionStorage.getItem('pb_access')) {
+    window.location.replace('index.html');
+  }
+})();
+
 // ══════════════════════════════════════════════════════
 // WORD SETS — 6 pre-built sets per language
 // Each entry: { id, lang, emoji, name, desc, words[] }
