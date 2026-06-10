@@ -2,12 +2,13 @@
 <!--
   ╔══════════════════════════════════════════════════════╗
   ║  ParleBien — Verbal Learning Platform                ║
-  ║  Version:  1.0.8                                     ║
-  ║  Released: 2025-06-05                                ║
+  ║  Version:  1.0.9                                     ║
+  ║  Released: 2026-06-10                                ║
   ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
   ║  Live:     parlebien.com                             ║
   ╠══════════════════════════════════════════════════════╣
   ║  Changelog:                                          ║
+  ║  1.0.9 — Listen Mode: auto-TTS + auto-mic chain        ║
   ║  1.0.8 — Fix time abbreviation 2h→deux heures matching  ║
   ║  1.0.7 — Number word↔digit fuzzy match, buildSession   ║
   ║  1.0.6 — Hard reset card HTML on set activate          ║
@@ -248,6 +249,34 @@
   .section-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
   .no-support { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.3); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--wrong); text-align: center; margin: 0 20px; }
 
+  /* ── LISTEN / AUDIO MODE ── */
+  .flash-card.listen-active .card-word,
+  .flash-card.listen-active .card-type,
+  .flash-card.listen-active .speak-btn { display: none !important; }
+  .audio-indicator { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .audio-bars { display: flex; gap: 5px; align-items: center; height: 44px; }
+  .audio-bars span { display: block; width: 5px; border-radius: 3px; background: var(--accent); opacity: 0.9; }
+  .audio-bars span:nth-child(1){ height:14px; animation: bar-wave 1.1s 0.00s ease-in-out infinite; }
+  .audio-bars span:nth-child(2){ height:28px; animation: bar-wave 1.1s 0.15s ease-in-out infinite; }
+  .audio-bars span:nth-child(3){ height:42px; animation: bar-wave 1.1s 0.30s ease-in-out infinite; }
+  .audio-bars span:nth-child(4){ height:28px; animation: bar-wave 1.1s 0.45s ease-in-out infinite; }
+  .audio-bars span:nth-child(5){ height:14px; animation: bar-wave 1.1s 0.60s ease-in-out infinite; }
+  @keyframes bar-wave {
+    0%,100% { transform: scaleY(0.45); opacity: 0.25; }
+    50%     { transform: scaleY(1.00); opacity: 1.00; }
+  }
+  .audio-bars.idle span { animation-play-state: paused; opacity: 0.2; transform: scaleY(0.45); }
+  .audio-status-label { font-size: 13px; color: var(--muted); }
+  .audio-replay-btn {
+    margin-top: 2px; padding: 7px 18px;
+    background: rgba(212,168,67,0.12); border: 1px solid rgba(212,168,67,0.28);
+    border-radius: 20px; color: var(--accent);
+    font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .audio-replay-btn:hover { background: rgba(212,168,67,0.22); }
+  body.spanish .audio-replay-btn { background: rgba(232,69,60,0.12); border-color: rgba(232,69,60,0.28); }
+
 
   /* ── WORD SETS PANEL ── */
   .sets-view { display: none; flex-direction: column; overflow-y: auto; }
@@ -320,6 +349,7 @@
     <button class="mode-btn" data-mode="tense" onclick="setMode('tense',this)">Tenses</button>
     <button class="mode-btn" data-mode="phrases" onclick="setMode('phrases',this)">Phrases</button>
     <button class="mode-btn" data-mode="random" onclick="setMode('random',this)">🎲 Random</button>
+    <button class="mode-btn" data-mode="listen" onclick="setMode('listen',this)">👂 Listen</button>
   </div>
 
   <div id="speechWarning" class="no-support" style="display:none;">
@@ -800,8 +830,8 @@ const langConfig = {
 };
 
 // ── VERSION ─────────────────────────────────────────
-const APP_VERSION = '1.0.8';
-const APP_RELEASE = '2025-06-05';
+const APP_VERSION = '1.0.9';
+const APP_RELEASE = '2026-06-10';
 
 // ── TIER SYSTEM (swap currentTier when you add payments) ──
 const TIERS = {
@@ -944,6 +974,13 @@ function initSpeech() {
     document.getElementById('typeInput').value='';
     document.getElementById('typeInput').placeholder='Listening…';
     document.getElementById('inputRow').classList.add('listening');
+    // Listen mode: animate bars while active
+    if (currentMode === 'listen') {
+      const barsEl = document.getElementById('audioBars');
+      const statusEl = document.getElementById('audioStatusLabel');
+      if (barsEl) barsEl.classList.remove('idle');
+      if (statusEl) statusEl.textContent = '🔴 Listening… speak now';
+    }
   };
   recognition.onend = () => {
     isListening=false;
@@ -952,6 +989,15 @@ function initSpeech() {
     document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
     document.getElementById('typeInput').placeholder='Speak or type your answer…';
     document.getElementById('inputRow').classList.remove('listening');
+    // Listen mode: update indicator
+    if (currentMode === 'listen' && !awaitingNext && !isSpeakingListen) {
+      const barsEl = document.getElementById('audioBars');
+      const statusEl = document.getElementById('audioStatusLabel');
+      if (barsEl) barsEl.classList.add('idle');
+      if (statusEl) statusEl.textContent = transcript
+        ? '✅ Got it — tap "Check Answer"'
+        : '🔊 Tap Replay to try again';
+    }
   };
   recognition.onerror = e => {
     isListening=false;
@@ -981,6 +1027,47 @@ function toggleListening() {
 function onTypeInput(val) {
   transcript=val.trim();
   document.getElementById('submitBtn').disabled=!transcript;
+}
+
+// ── LISTEN MODE: TTS → AUTO-MIC CHAIN ──────────────
+let isSpeakingListen = false;
+
+function speakAndListen() {
+  if (!currentCard || awaitingNext) return;
+  window.speechSynthesis.cancel();
+  if (isListening && recognition) recognition.stop();
+
+  const cfg = langConfig[currentLang];
+  // In listen mode we always present EN → target, so speak English
+  const word = currentCard.en;
+  const utt = new SpeechSynthesisUtterance(word);
+  utt.lang = 'en-US';
+  utt.rate = 0.82;
+
+  const barsEl  = document.getElementById('audioBars');
+  const statusEl = document.getElementById('audioStatusLabel');
+  if (barsEl)   { barsEl.classList.remove('idle'); }
+  if (statusEl) { statusEl.textContent = '🔊 Listen carefully…'; }
+  isSpeakingListen = true;
+
+  utt.onend = () => {
+    isSpeakingListen = false;
+    if (barsEl)   barsEl.classList.add('idle');
+    if (statusEl) statusEl.textContent = '🎙️ Speak your translation…';
+    setTimeout(() => { if (currentMode === 'listen' && !awaitingNext) autoStartListening(); }, 350);
+  };
+
+  window.speechSynthesis.speak(utt);
+}
+
+function autoStartListening() {
+  if (!recognition || awaitingNext || isListening || isSpeakingListen) return;
+  transcript = '';
+  document.getElementById('typeInput').value = '';
+  document.getElementById('submitBtn').disabled = true;
+  const cfg = langConfig[currentLang];
+  recognition.lang = cfg.speechCode; // always target language in listen mode
+  try { recognition.start(); } catch(e) { console.warn('Recognition start failed:', e); }
 }
 
 // ── FUZZY MATCH ────────────────────────────────────
@@ -1085,7 +1172,8 @@ function buildSession() {
     // Full library — apply mode filters
     if (currentMode === 'phrases') pool = vocab.filter(v => v.type === 'phrase');
     else if (currentMode === 'tense') pool = vocab.filter(v => v.tenses);
-    else if (currentMode !== 'random') pool = vocab.filter(v => v.type !== 'phrase');
+    else if (currentMode !== 'random' && currentMode !== 'listen') pool = vocab.filter(v => v.type !== 'phrase');
+    // 'listen' and 'random' use the full pool including phrases
   } else {
     // Specific set active — NEVER filter by type, always use all words in set
     // Exception: tense mode only shows verbs that have conjugations
@@ -1162,6 +1250,38 @@ function loadCard() {
   document.getElementById('progressFill').style.width=pct+'%';
   document.getElementById('progressLabel').textContent=`Card ${cardIndex+1} of ${totalCards}`;
   document.getElementById('streakLabel').textContent=`🔥 ${streak} streak`;
+
+  // ── LISTEN MODE setup ──
+  const fc = document.getElementById('flashCard');
+  if (currentMode === 'listen') {
+    fc.classList.add('listen-active');
+    // Insert audio indicator if not already present
+    if (!document.getElementById('audioIndicator')) {
+      const ind = document.createElement('div');
+      ind.id = 'audioIndicator';
+      ind.className = 'audio-indicator';
+      ind.innerHTML = `
+        <div class="audio-bars idle" id="audioBars">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="audio-status-label" id="audioStatusLabel">Preparing…</div>
+        <button class="audio-replay-btn" onclick="speakAndListen()">🔊 Replay</button>`;
+      // Insert before cardType (which is hidden in listen mode)
+      const cardTypeEl = document.getElementById('cardType');
+      fc.insertBefore(ind, cardTypeEl);
+    } else {
+      document.getElementById('audioStatusLabel').textContent = 'Preparing…';
+      document.getElementById('audioBars').classList.add('idle');
+    }
+    document.getElementById('typeInput').placeholder = '🔊 Listen, then speak or type your translation…';
+    // Auto-speak after brief delay so card renders first
+    setTimeout(() => { if (currentMode === 'listen') speakAndListen(); }, 650);
+  } else {
+    // Clean up listen mode if switching away
+    fc.classList.remove('listen-active');
+    const ind = document.getElementById('audioIndicator');
+    if (ind) ind.remove();
+  }
 }
 
 function speakPrompt() {
@@ -1245,6 +1365,8 @@ function showSessionEnd() {
 
 function newSession() {
   score=0; streak=0; stats={correct:0,wrong:0,skipped:0};
+  isSpeakingListen=false;
+  window.speechSynthesis.cancel();
   document.getElementById('scoreDisplay').textContent=0;
   buildSession();
   document.getElementById('typeInput').value='';
@@ -1403,6 +1525,8 @@ function activateSet(setId) {
 
   // Hard reset all state variables
   awaitingNext = false;
+  isSpeakingListen = false;
+  window.speechSynthesis.cancel();
   score = 0; streak = 0; cardIndex = 0;
   stats = {correct:0, wrong:0, skipped:0};
   transcript = '';
