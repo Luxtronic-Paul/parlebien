@@ -976,17 +976,36 @@ function initSpeech() {
   recognition = new SR();
   recognition.continuous = false;
   recognition.interimResults = true;
+  recognition.maxAlternatives = 5;  // capture up to 5 candidates
+
+  // Store all recognition alternatives so fuzzy match can try each one
+  let recognitionAlternatives = [];
 
   recognition.onresult = e => {
     let interim='', final='';
+    recognitionAlternatives = [];
     for (let i=e.resultIndex;i<e.results.length;i++) {
-      if(e.results[i].isFinal) final+=e.results[i][0].transcript;
-      else interim+=e.results[i][0].transcript;
+      if(e.results[i].isFinal) {
+        final += e.results[i][0].transcript;
+        // Collect all alternatives for the final result
+        for (let j=0; j<e.results[i].length; j++) {
+          const alt = e.results[i][j].transcript.trim();
+          if (alt) recognitionAlternatives.push(alt);
+        }
+      } else {
+        interim += e.results[i][0].transcript;
+      }
     }
     transcript=(final||interim).trim();
     document.getElementById('typeInput').value=transcript;
     if(!awaitingNext) document.getElementById('submitBtn').disabled=!transcript;
   };
+
+  // Force immediate processing when user stops speaking — critical for short words
+  recognition.onspeechend = () => { if (isListening) recognition.stop(); };
+
+  // Expose alternatives to submitAnswer via closure
+  recognition._getAlternatives = () => recognitionAlternatives;
   recognition.onstart = () => {
     isListening=true;
     document.getElementById('micBtn').classList.add('listening');
@@ -1344,7 +1363,10 @@ function submitAnswer() {
   else if(currentMode==='tgt-en') correctAnswer=currentCard.en;
   else correctAnswer=currentCard.tgt;
 
-  const isCorrect=isFuzzyMatch(transcript,correctAnswer);
+  // Try the displayed transcript first, then all speech recognition alternatives
+  const alts = recognition && recognition._getAlternatives ? recognition._getAlternatives() : [];
+  const candidates = [transcript, ...alts.filter(a => a !== transcript)];
+  const isCorrect = candidates.some(c => isFuzzyMatch(c, correctAnswer));
   const card=document.getElementById('flashCard');
   const banner=document.getElementById('resultBanner');
 
