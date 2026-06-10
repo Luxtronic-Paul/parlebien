@@ -63,6 +63,15 @@
     border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap;
   }
   .score-badge b { color: var(--accent); }
+  /* Listen mode toggle */
+  .listen-toggle {
+    flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--card); color: var(--muted); font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .listen-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .listen-toggle.active { background: var(--accent); color: #0e0e14; border-color: var(--accent); }
 
   /* Language toggle */
   .lang-toggle {
@@ -338,6 +347,7 @@
         <button class="lang-btn active" id="btnFr" onclick="switchLang('fr')">🇫🇷 French</button>
         <button class="lang-btn" id="btnEs" onclick="switchLang('es')">🇪🇸 Spanish</button>
       </div>
+      <button class="listen-toggle" id="listenToggle" onclick="toggleListenMode()" title="Listen Mode — hear the word, speak your translation">🔊</button>
       <div class="score-badge">Score: <b id="scoreDisplay">0</b></div>
     </div>
   </div>
@@ -349,7 +359,6 @@
     <button class="mode-btn" data-mode="tense" onclick="setMode('tense',this)">Tenses</button>
     <button class="mode-btn" data-mode="phrases" onclick="setMode('phrases',this)">Phrases</button>
     <button class="mode-btn" data-mode="random" onclick="setMode('random',this)">🎲 Random</button>
-    <button class="mode-btn" data-mode="listen" onclick="setMode('listen',this)">👂 Listen</button>
   </div>
 
   <div id="speechWarning" class="no-support" style="display:none;">
@@ -1029,6 +1038,28 @@ function onTypeInput(val) {
   document.getElementById('submitBtn').disabled=!transcript;
 }
 
+// ── LISTEN MODE TOGGLE ─────────────────────────────
+function toggleListenMode() {
+  const isNowListen = currentMode !== 'listen';
+  if (isNowListen) {
+    // Save the previous mode so we can restore it on toggle-off
+    document.getElementById('listenToggle').dataset.prevMode = currentMode;
+    document.getElementById('listenToggle').dataset.prevBtn  =
+      document.querySelector('.mode-btn.active')?.dataset.mode || 'en-tgt';
+    currentMode = 'listen';
+    document.getElementById('listenToggle').classList.add('active');
+    // Don't change the mode-bar highlight — listen is a separate overlay
+  } else {
+    // Restore previous mode
+    const prev = document.getElementById('listenToggle').dataset.prevMode || 'en-tgt';
+    currentMode = prev;
+    document.getElementById('listenToggle').classList.remove('active');
+    isSpeakingListen = false;
+    window.speechSynthesis.cancel();
+  }
+  newSession();
+}
+
 // ── LISTEN MODE: TTS → AUTO-MIC CHAIN ──────────────
 let isSpeakingListen = false;
 
@@ -1434,6 +1465,10 @@ function setMode(mode,btn) {
   currentMode=mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  // Deactivate listen toggle if user picks a mode-bar option
+  document.getElementById('listenToggle').classList.remove('active');
+  isSpeakingListen=false;
+  window.speechSynthesis.cancel();
   newSession();
 }
 
