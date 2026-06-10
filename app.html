@@ -2,12 +2,13 @@
 <!--
   ╔══════════════════════════════════════════════════════╗
   ║  ParleBien — Verbal Learning Platform                ║
-  ║  Version:  1.0.9                                     ║
+  ║  Version:  1.0.10                                    ║
   ║  Released: 2026-06-10                                ║
   ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
   ║  Live:     parlebien.com                             ║
   ╠══════════════════════════════════════════════════════╣
   ║  Changelog:                                          ║
+  ║  1.0.10 — Split Skip: add ↩ Repeat button              ║
   ║  1.0.9 — Listen Mode: auto-TTS + auto-mic chain        ║
   ║  1.0.8 — Fix time abbreviation 2h→deux heures matching  ║
   ║  1.0.7 — Number word↔digit fuzzy match, buildSession   ║
@@ -188,7 +189,9 @@
   }
   .input-row input[type="text"]::placeholder { color: var(--muted); font-size: 14px; }
   .mic-label { font-size: 11px; color: var(--muted); text-align: center; letter-spacing: 0.3px; }
-  .action-row { display: flex; gap: 10px; }
+  .action-row { display: flex; gap: 8px; }
+  .action-row .btn-secondary { flex: 0.7 !important; }
+  .action-row .btn-primary   { flex: 1.4 !important; }
   .btn {
     flex: 1; padding: 14px; border-radius: 14px; border: none;
     font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
@@ -396,6 +399,7 @@
       </div>
       <div class="mic-label" id="micLabel">🎙️ Tap mic to speak &nbsp;|&nbsp; ⌨️ Or just type above</div>
       <div class="action-row">
+        <button class="btn btn-secondary" id="repeatBtn" onclick="repeatCard()" title="Practice this word again">↩ Repeat</button>
         <button class="btn btn-secondary" onclick="skipCard()">Skip</button>
         <button class="btn btn-primary" id="submitBtn" onclick="submitAnswer()" disabled>Check Answer</button>
       </div>
@@ -839,7 +843,7 @@ const langConfig = {
 };
 
 // ── VERSION ─────────────────────────────────────────
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.0.10';
 const APP_RELEASE = '2026-06-10';
 
 // ── TIER SYSTEM (swap currentTier when you add payments) ──
@@ -1371,6 +1375,17 @@ function nextCard() { cardIndex++; loadCard(); }
 function skipCard() {
   stats.skipped++; streak=0;
   document.getElementById('streakLabel').textContent='🔥 0 streak';
+  nextCard();
+}
+function repeatCard() {
+  // Re-insert the current card at the next position so it comes back immediately
+  if (!currentCard) return;
+  awaitingNext=false;
+  streak=0;
+  document.getElementById('streakLabel').textContent='🔥 0 streak';
+  // Insert a copy after the current index so it's the very next card
+  sessionCards.splice(cardIndex + 1, 0, currentCard);
+  totalCards = sessionCards.length;
   nextCard();
 }
 
