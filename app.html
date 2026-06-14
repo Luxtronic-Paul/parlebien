@@ -2,12 +2,15 @@
 <!--
   ╔══════════════════════════════════════════════════════╗
   ║  ParleBien — Verbal Learning Platform                ║
-  ║  Version:  1.0.10                                    ║
-  ║  Released: 2026-06-10                                ║
+  ║  Version:  1.0.10_01                                 ║
+  ║  Released: 2026-06-14                                ║
   ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
   ║  Live:     parlebien.com                             ║
   ╠══════════════════════════════════════════════════════╣
   ║  Changelog:                                          ║
+  ║  1.0.10_01 — French phonetics: SpeechGrammarList,   ║
+  ║              phonetic alias map, short-word fuzzy    ║
+  ║              threshold — improves 1–10 recognition  ║
   ║  1.0.10 — Split Skip: add ↩ Repeat button              ║
   ║  1.0.9 — Listen Mode: auto-TTS + auto-mic chain        ║
   ║  1.0.8 — Fix time abbreviation 2h→deux heures matching  ║
@@ -978,6 +981,20 @@ function initSpeech() {
   recognition.interimResults = true;
   recognition.maxAlternatives = 5;  // capture up to 5 candidates
 
+  // Grammar hint: bias the recognizer toward French number words so learner
+  // mispronunciations still resolve to the correct token rather than silence/garbage
+  const GL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+  if (GL) {
+    const frNums = ['zéro','un','une','deux','trois','quatre','cinq','six','sept',
+      'huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize',
+      'dix-sept','dix-huit','dix-neuf','vingt','trente','quarante','cinquante',
+      'soixante','quatre-vingts','cent','mille'];
+    const grammar = '#JSGF V1.0; grammar numbers; public <number> = ' + frNums.join(' | ') + ' ;';
+    const gList = new GL();
+    gList.addFromString(grammar, 0.6); // weight 0.6: strong hint but doesn't block other words
+    recognition.grammars = gList;
+  }
+
   // Store all recognition alternatives so fuzzy match can try each one
   let recognitionAlternatives = [];
 
@@ -1157,6 +1174,36 @@ const NUM_MAP_FR = {
   'cinq':'5','six':'6','sept':'7','huit':'8','neuf':'9','dix':'10',
 };
 
+// Phonetic aliases: what Chrome's ASR may return when a learner mispronounces
+// French numbers — maps the ASR output → correct French word so fuzzy match
+// can still find a near-hit even if Levenshtein alone would miss.
+const PHONETIC_FR = {
+  // un
+  'on':'un','an':'un','ang':'un','uh':'un',
+  // deux
+  'duh':'deux','do':'deux','du':'deux','dow':'deux','dew':'deux','de':'deux',
+  // trois
+  'twah':'trois','twa':'trois','trwa':'trois','troi':'trois','swah':'trois',
+  // quatre
+  'cat':'quatre','catr':'quatre','katr':'quatre','kwatr':'quatre','catra':'quatre',
+  // cinq — the most commonly mispronounced; ASR often returns English phonetics
+  'sank':'cinq','sink':'cinq','sunk':'cinq','sang':'cinq','seng':'cinq',
+  'sync':'cinq','seem':'cinq','sam':'cinq','sen':'cinq',
+  // six — usually fine but may be heard as
+  'sis':'six','sees':'six',
+  // sept — silent p; ASR often returns "set"
+  'set':'sept','sed':'sept','sep':'sept','sette':'sept','sett':'sept',
+  // huit — silent h; sounds like "weet"
+  'weet':'huit','wee':'huit','we':'huit','wit':'huit','wheat':'huit','uit':'huit',
+  // neuf — sounds like "nuf" / "ner"
+  'nuh':'neuf','nef':'neuf','nov':'neuf','nev':'neuf','nuff':'neuf','ner':'neuf',
+  // dix — silent x; sounds like "dis" / "dee"
+  'dis':'dix','dees':'dix','dee':'dix','dice':'dix','diss':'dix',
+  // teens
+  'onz':'onze','duz':'douze','trez':'treize','katorz':'quatorze',
+  'canz':'quinze','kanz':'quinze','sez':'seize','van':'vingt',
+};
+
 function expandNumber(str) {
   // Returns array of equivalent forms for a number word or digit
   const s = str.trim().toLowerCase();
@@ -1172,7 +1219,9 @@ function expandNumber(str) {
 }
 
 function normalize(str) {
-  let s = str.toLowerCase();
+  let s = str.toLowerCase().trim();
+  // Apply phonetic alias first (single-word ASR mishearings of French numbers)
+  if (PHONETIC_FR[s]) s = PHONETIC_FR[s];
   // Expand time abbreviations before stripping
   s = s.replace(/(\d+)\s*h\b/g, (m,n) => n + ' heures');  // 2h → 2 heures
   s = s.replace(/(\d+)\s*h\s*(\d+)/g, (m,h,min) => h + ' heures ' + min); // 2h30 → 2 heures 30
@@ -1202,11 +1251,16 @@ function stripArticles(s) {
   return s.replace(langConfig[currentLang].articles,'');
 }
 function isFuzzyMatch(spoken, correct) {
-  const a = normalize(spoken);
-  const variants = correct.split('/').map(v => normalize(v.trim()));
+  // Expand spoken with: digit variants, phonetic aliases, and normalized forms
+  const spokenRaw = spoken.trim().toLowerCase();
+  const spokenAliased = PHONETIC_FR[spokenRaw] || spokenRaw; // direct alias lookup
+  const rawForms = [...new Set([spokenRaw, spokenAliased, ...expandNumber(spoken)])];
+  const spokenForms = [...new Set(rawForms.map(f => {
+    const aliased = PHONETIC_FR[f.trim().toLowerCase()] || f;
+    return normalize(aliased);
+  }))];
 
-  // Expand spoken and correct with numeric equivalents
-  const spokenForms = expandNumber(spoken).map(normalize);
+  const variants = correct.split('/').map(v => normalize(v.trim()));
   const correctForms = [];
   variants.forEach(v => {
     correctForms.push(v);
@@ -1217,7 +1271,11 @@ function isFuzzyMatch(spoken, correct) {
   for (const spoken_form of spokenForms) {
     for (const v of uniqueCorrect) {
       if (!v) continue;
-      const threshold = Math.max(Math.floor(v.length * 0.3), 2);
+      // Slightly wider tolerance for short words (≤5 chars) — learner pronunciation
+      // of e.g. "cinq", "huit" can be far from ASR's output
+      const threshold = v.length <= 5
+        ? Math.max(Math.floor(v.length * 0.4), 2)
+        : Math.max(Math.floor(v.length * 0.3), 2);
       if (levenshtein(spoken_form, v) <= threshold) return true;
       if (levenshtein(spoken_form, stripArticles(v)) <= threshold) return true;
       if (levenshtein(stripArticles(spoken_form), v) <= threshold) return true;
