@@ -2,12 +2,18 @@
 <!--
   ╔══════════════════════════════════════════════════════╗
   ║  ParleBien — Verbal Learning Platform                ║
-  ║  Version:  1.0.10_01                                 ║
-  ║  Released: 2026-06-14                                ║
+  ║  Version:  1.0.11                                    ║
+  ║  Released: 2026-06-20                                ║
   ║  Repo:     github.com/Luxtronic-Paul/parlebien        ║
   ║  Live:     parlebien.com                             ║
   ╠══════════════════════════════════════════════════════╣
   ║  Changelog:                                          ║
+  ║  1.0.11 — Dual-mode: 🎓 Learn (hear→mimic auto-seq)  ║
+  ║            vs ⚡ Practise (recall); session toggle,  ║
+  ║            per-word stat tracking                    ║
+  ║  1.0.10_02 — Logo home link, ParleBien anchor card,  ║
+  ║              skip reveals answer + speaks it,        ║
+  ║              🔁 repeat + try-again on wrong answers  ║
   ║  1.0.10_01 — French phonetics: SpeechGrammarList,   ║
   ║              phonetic alias map, short-word fuzzy    ║
   ║              threshold — improves 1–10 recognition  ║
@@ -151,6 +157,55 @@
   .result-text { font-size: 13px; line-height: 1.6; }
   .result-text b { display: block; font-size: 14px; margin-bottom: 2px; }
   .result-text .heard { color: var(--muted); font-size: 12px; }
+  .repeat-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .btn-repeat { background: rgba(123,108,246,0.15); border: 1px solid rgba(123,108,246,0.35);
+    color: var(--text); border-radius: 20px; padding: 6px 14px; font-size: 12px;
+    cursor: pointer; white-space: nowrap; }
+  .btn-repeat:hover { background: rgba(123,108,246,0.28); }
+  .btn-try-again { background: transparent; border: 1px solid var(--border);
+    color: var(--muted); border-radius: 20px; padding: 6px 14px; font-size: 12px;
+    cursor: pointer; white-space: nowrap; }
+  .btn-try-again:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── SESSION MODE TOGGLE ── */
+  .session-mode-toggle {
+    display: flex; gap: 0; padding: 0 20px 12px;
+  }
+  .sm-btn {
+    flex: 1; padding: 9px 0; font-size: 13px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); transition: all 0.2s;
+  }
+  .sm-btn:first-child { border-radius: 20px 0 0 20px; border-right: none; }
+  .sm-btn:last-child  { border-radius: 0 20px 20px 0; }
+  .sm-btn.active { background: var(--accent); color: #0e0e14; border-color: var(--accent); font-weight: 700; }
+  body.spanish .sm-btn.active { background: var(--accent); border-color: var(--accent); }
+
+  /* ── LEARN MODE CARD ELEMENTS ── */
+  .card-learn-target {
+    font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700;
+    color: var(--accent2); line-height: 1.2; display: none;
+  }
+  body.spanish .card-learn-target { color: var(--accent); }
+  .learn-speak-row {
+    display: none; gap: 12px; margin-top: 6px;
+  }
+  .btn-speak-lang {
+    flex: 1; padding: 9px 0; border-radius: 20px; font-size: 13px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  .btn-speak-lang:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-speak-lang:active { transform: scale(0.96); }
+
+  /* ── LEARN STATUS LABEL ── */
+  .learn-status {
+    display: none; text-align: center; font-size: 13px; font-weight: 500;
+    color: var(--accent); padding: 4px 0; letter-spacing: 0.5px;
+    animation: learnPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes learnPulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
 
   /* ── ANSWER AREA ── */
   .answer-area { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -347,7 +402,7 @@
 
   <!-- HEADER -->
   <div class="header">
-    <div class="logo" id="logoText">Parle<span>Bien</span></div>
+    <a href="landing.html" style="text-decoration:none;"><div class="logo" id="logoText">Parle<span>Bien</span></div></a>
     <div class="header-right">
       <div class="lang-toggle">
         <button class="lang-btn active" id="btnFr" onclick="switchLang('fr')">🇫🇷 French</button>
@@ -373,6 +428,13 @@
 
   <!-- PRACTICE VIEW -->
   <div id="practiceView" style="display:flex;flex-direction:column;flex:1;gap:0;">
+
+    <!-- SESSION MODE TOGGLE -->
+    <div class="session-mode-toggle" id="sessionModeToggle">
+      <button class="sm-btn" id="smLearn" onclick="switchSessionMode('learn')">🎓 Learn</button>
+      <button class="sm-btn active" id="smReinforce" onclick="switchSessionMode('reinforce')">⚡ Practise</button>
+    </div>
+
     <div class="progress-wrap">
       <div class="progress-label">
         <span id="progressLabel">Card 1 of 10</span>
@@ -386,7 +448,13 @@
         <div class="card-tense" id="cardTense" style="display:none">Present Tense</div>
         <div class="card-word" id="cardWord">Loading...</div>
         <div class="card-type" id="cardType">noun</div>
-        <button class="speak-btn" onclick="speakPrompt()" title="Hear pronunciation">🔊</button>
+        <button class="speak-btn" id="speakPromptBtn" onclick="speakPrompt()" title="Hear pronunciation">🔊</button>
+        <!-- Learn mode elements — hidden in Practise mode -->
+        <div class="card-learn-target" id="cardLearnTarget"></div>
+        <div class="learn-speak-row" id="learnSpeakRow">
+          <button class="btn-speak-lang" onclick="speakLearningEN()">🔊 English</button>
+          <button class="btn-speak-lang" id="btnSpeakFR" onclick="speakLearningFR()">🇫🇷 French</button>
+        </div>
       </div>
       <div class="result-banner" id="resultBanner">
         <div class="result-icon" id="resultIcon">✅</div>
@@ -401,6 +469,7 @@
           oninput="onTypeInput(this.value)" onkeydown="if(event.key==='Enter')submitAnswer()">
       </div>
       <div class="mic-label" id="micLabel">🎙️ Tap mic to speak &nbsp;|&nbsp; ⌨️ Or just type above</div>
+      <div class="learn-status" id="learnStatus"></div>
       <div class="action-row">
         <button class="btn btn-secondary" onclick="skipCard()">Skip</button>
         <button class="btn btn-secondary" id="repeatBtn" onclick="repeatCard()" title="Practice this word again">↩ Repeat</button>
@@ -930,6 +999,11 @@ let recognition = null, isListening = false, transcript = '';
 let stats = {correct:0,wrong:0,skipped:0};
 let awaitingNext = false;
 
+// ── SESSION MODE (Learn / Reinforce) ───────────────
+let sessionMode = localStorage.getItem('pb_sessionMode') || 'reinforce';
+let learnAutoEval = false;      // flag: auto-evaluate when mic closes in learn mode
+let learnSequenceActive = false; // flag: auto-sequence is running
+
 // ── LANGUAGE SWITCH ────────────────────────────────
 function switchLang(lang) {
   if (lang === currentLang) return;
@@ -1026,13 +1100,14 @@ function initSpeech() {
   recognition.onstart = () => {
     isListening=true;
     document.getElementById('micBtn').classList.add('listening');
-    document.getElementById('micBtn').textContent='⏹️';
+    if (sessionMode !== 'learn') document.getElementById('micBtn').textContent='⏹️';
     document.getElementById('micLabel').textContent='🔴 Listening… speak now — tap ⏹️ to stop';
     document.getElementById('typeInput').value='';
     document.getElementById('typeInput').placeholder='Listening…';
     document.getElementById('inputRow').classList.add('listening');
-    // Listen mode: animate bars while active
-    if (currentMode === 'listen') {
+    if (sessionMode === 'learn') {
+      setLearnStatus('🎙️ Listening…');
+    } else if (currentMode === 'listen') {
       const barsEl = document.getElementById('audioBars');
       const statusEl = document.getElementById('audioStatusLabel');
       if (barsEl) barsEl.classList.remove('idle');
@@ -1043,10 +1118,16 @@ function initSpeech() {
     isListening=false;
     document.getElementById('micBtn').classList.remove('listening');
     document.getElementById('micBtn').textContent='🎙️';
-    document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+    document.getElementById('micLabel').textContent='🎙️ Tap mic to speak  |  ⌨️ Or just type above';
     document.getElementById('typeInput').placeholder='Speak or type your answer…';
     document.getElementById('inputRow').classList.remove('listening');
-    // Listen mode: update indicator
+    // Learn mode: auto-evaluate when mic closes
+    if (sessionMode === 'learn' && learnAutoEval && !awaitingNext) {
+      learnAutoEval = false;
+      setTimeout(() => evaluateLearnAnswer(), 350);
+      return;
+    }
+    // Listen (reinforce) mode: update indicator
     if (currentMode === 'listen' && !awaitingNext && !isSpeakingListen) {
       const barsEl = document.getElementById('audioBars');
       const statusEl = document.getElementById('audioStatusLabel');
@@ -1072,6 +1153,8 @@ function toggleListening() {
   if(!recognition) return;
   if(awaitingNext) { nextCard(); return; }
   if(isListening) { recognition.stop(); return; }
+  // Learn mode: mic button triggers full auto-sequence
+  if (sessionMode === 'learn') { runLearnAutoSequence(); return; }
   transcript='';
   document.getElementById('typeInput').value='';
   document.getElementById('submitBtn').disabled=true;
@@ -1316,12 +1399,23 @@ function buildSession() {
     sessionCards = [...vocab].sort(() => Math.random() - 0.5).slice(0, 10);
   }
 
+  // Anchor card — always first, not counted in word limit or score pool
+  const anchorCard = {
+    en: 'ParleBien',
+    tgt: 'Speak well',
+    type: 'anchor',
+    _isAnchor: true
+  };
+  sessionCards.unshift(anchorCard);
+
   totalCards = sessionCards.length;
   cardIndex = 0;
 }
 
 function loadCard() {
   awaitingNext=false;
+  learnSequenceActive=false;
+  learnAutoEval=false;
   if(cardIndex>=sessionCards.length){showSessionEnd();return;}
   currentCard=sessionCards[cardIndex];
   currentTenseKey=null;
@@ -1331,13 +1425,38 @@ function loadCard() {
   setTimeout(()=>card.classList.remove('card-animate'),300);
   document.getElementById('resultBanner').className='result-banner';
   transcript='';
+
+  // Reset learn-mode elements (hidden by default in reinforce mode)
+  document.getElementById('cardLearnTarget').style.display='none';
+  document.getElementById('learnSpeakRow').style.display='none';
+  document.getElementById('speakPromptBtn').style.display='';
+  document.getElementById('submitBtn').style.display='';
+  setLearnStatus('');
+
   document.getElementById('typeInput').value='';
   document.getElementById('typeInput').placeholder='Speak or type your answer…';
   document.getElementById('submitBtn').disabled=true;
   document.getElementById('submitBtn').textContent='Check Answer';
   document.getElementById('submitBtn').onclick=submitAnswer;
   document.getElementById('micBtn').textContent='🎙️';
-  document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+  document.getElementById('micLabel').textContent='🎙️ Tap mic to speak  |  ⌨️ Or just type above';
+
+  // Learn mode: skip anchor card, delegate to loadLearnCard
+  if (sessionMode === 'learn' && currentCard._isAnchor) { cardIndex++; loadCard(); return; }
+  if (sessionMode === 'learn') { loadLearnCard(); return; }
+  // ── ANCHOR CARD special rendering ──
+  if (currentCard._isAnchor) {
+    card.style.setProperty('--card-border', 'var(--accent)');
+    document.getElementById('cardDirection').textContent = '✨ WELCOME';
+    document.getElementById('cardWord').textContent = 'ParleBien';
+    document.getElementById('cardTense').style.display = 'none';
+    document.getElementById('cardType').textContent = 'speak well';
+    document.getElementById('typeInput').placeholder = 'What does ParleBien mean?';
+    const pct = (1 / totalCards) * 100;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = `Card 1 of ${totalCards}`;
+    return;
+  }
 
   const cfg=langConfig[currentLang];
   const tenseEl=document.getElementById('cardTense');
@@ -1416,6 +1535,26 @@ function speakPrompt() {
 function submitAnswer() {
   transcript=document.getElementById('typeInput').value.trim();
   if(!transcript) return;
+
+  // Anchor card — no score, branded response
+  if (currentCard._isAnchor) {
+    const card=document.getElementById('flashCard');
+    const banner=document.getElementById('resultBanner');
+    const isCorrect = isFuzzyMatch(transcript, 'Speak well');
+    card.classList.add(isCorrect ? 'correct' : 'wrong');
+    banner.className='result-banner ' + (isCorrect ? 'correct-banner' : 'wrong-banner') + ' show';
+    document.getElementById('resultIcon').textContent = isCorrect ? '✨' : '💬';
+    document.getElementById('resultText').innerHTML = isCorrect
+      ? `<b>That's right!</b><em>Parle</em> = speak &nbsp;·&nbsp; <em>Bien</em> = well`
+      : `<b>Parle = speak, Bien = well</b><br><span class="heard">ParleBien — speak well.</span>`;
+    awaitingNext=true;
+    document.getElementById('submitBtn').textContent='Start →';
+    document.getElementById('submitBtn').disabled=false;
+    document.getElementById('submitBtn').onclick=nextCard;
+    document.getElementById('micBtn').textContent='▶️';
+    return;
+  }
+
   let correctAnswer;
   if(currentTenseKey) correctAnswer=currentCard.tenses[currentTenseKey];
   else if(currentMode==='tgt-en') correctAnswer=currentCard.en;
@@ -1439,7 +1578,13 @@ function submitAnswer() {
     card.classList.add('wrong');
     banner.className='result-banner wrong-banner show';
     document.getElementById('resultIcon').textContent='❌';
-    document.getElementById('resultText').innerHTML=`<b>Not quite!</b>Correct answer: <em>${correctAnswer}</em><br><span class="heard">You said: "${transcript}"</span>`;
+    document.getElementById('resultText').innerHTML=
+      `<b>Not quite!</b>Correct answer: <em>${correctAnswer}</em><br>` +
+      `<span class="heard">You said: "${transcript}"</span>` +
+      `<div class="repeat-row">` +
+        `<button class="btn-repeat" onclick="repeatPronunciation()">🔁 Hear it again</button>` +
+        `<button class="btn-try-again" onclick="tryAgainNoScore()">🎙️ Try saying it</button>` +
+      `</div>`;
   }
   document.getElementById('scoreDisplay').textContent=score;
   document.getElementById('streakLabel').textContent=`🔥 ${streak} streak`;
@@ -1459,11 +1604,75 @@ function submitAnswer() {
   document.getElementById('micLabel').textContent='Tap ▶️ or "Next Card" to continue';
 }
 
+// Speak the correct answer slowly so the user can mimic it
+function repeatPronunciation() {
+  let correctAnswer;
+  if (currentTenseKey) correctAnswer = currentCard.tenses[currentTenseKey];
+  else if (currentMode === 'tgt-en') correctAnswer = currentCard.en;
+  else correctAnswer = currentCard.tgt;
+  const cfg = langConfig[currentLang];
+  const spkLang = (currentTenseKey || currentMode !== 'tgt-en') ? cfg.speechCode : 'en-US';
+  const utt = new SpeechSynthesisUtterance(correctAnswer);
+  utt.lang = spkLang; utt.rate = 0.7;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utt);
+}
+
+// Let the user attempt pronunciation without it counting against score
+function tryAgainNoScore() {
+  if (!recognition) return;
+  // Update the hint label but leave awaitingNext=true — result won't be re-scored
+  document.getElementById('micLabel').textContent = '🎙️ Speak the word — no score impact';
+  const cfg = langConfig[currentLang];
+  recognition.lang = (currentMode === 'tgt-en') ? 'en-US' : cfg.speechCode;
+  // Temporarily override onresult to just show what was heard without scoring
+  const origOnResult = recognition.onresult;
+  recognition.onresult = e => {
+    let heard = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      heard += e.results[i][0].transcript;
+    }
+    document.getElementById('typeInput').value = heard.trim();
+    document.getElementById('micLabel').textContent = `You said: "${heard.trim()}" — tap 🔁 to hear it again`;
+    recognition.onresult = origOnResult; // restore
+  };
+  try { recognition.start(); } catch(e) { console.warn('tryAgain start failed:', e); }
+}
+
 function nextCard() { cardIndex++; loadCard(); }
 function skipCard() {
+  if (currentCard && currentCard._isAnchor) { nextCard(); return; }
   stats.skipped++; streak=0;
   document.getElementById('streakLabel').textContent='🔥 0 streak';
-  nextCard();
+
+  // Reveal the correct answer, speak it, then auto-advance after 2s
+  let correctAnswer;
+  if (currentTenseKey) correctAnswer = currentCard.tenses[currentTenseKey];
+  else if (currentMode === 'tgt-en') correctAnswer = currentCard.en;
+  else correctAnswer = currentCard.tgt;
+
+  const card = document.getElementById('flashCard');
+  const banner = document.getElementById('resultBanner');
+  card.classList.add('wrong');
+  banner.className = 'result-banner wrong-banner show';
+  document.getElementById('resultIcon').textContent = '⏭️';
+  document.getElementById('resultText').innerHTML =
+    `<b>Skipped</b>Correct answer: <em>${correctAnswer}</em>`;
+
+  // Speak the answer at slow rate so user can hear and absorb it
+  const cfg = langConfig[currentLang];
+  const spkLang = (currentTenseKey || currentMode !== 'tgt-en') ? cfg.speechCode : 'en-US';
+  const utt = new SpeechSynthesisUtterance(correctAnswer);
+  utt.lang = spkLang; utt.rate = 0.75;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utt);
+
+  // Disable inputs during reveal pause
+  awaitingNext = true;
+  document.getElementById('submitBtn').textContent = 'Next Card →';
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('submitBtn').onclick = nextCard;
+  document.getElementById('micBtn').textContent = '▶️';
 }
 function repeatCard() {
   // Re-insert the current card at the next position so it comes back immediately
@@ -1505,7 +1714,7 @@ function newSession() {
   buildSession();
   document.getElementById('typeInput').value='';
   document.getElementById('typeInput').placeholder='Speak or type your answer…';
-  document.getElementById('micLabel').textContent='🎙️ Tap mic to speak \u00a0|\u00a0 ⌨️ Or just type above';
+  document.getElementById('micLabel').textContent='🎙️ Tap mic to speak  |  ⌨️ Or just type above';
   loadCard();
 }
 
@@ -1565,13 +1774,10 @@ function renderWordList() {
 }
 
 function setMode(mode,btn) {
+  if(sessionMode === 'learn') return; // learn mode ignores mode tabs
   currentMode=mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  // Deactivate listen toggle if user picks a mode-bar option
-  document.getElementById('listenToggle').classList.remove('active');
-  isSpeakingListen=false;
-  window.speechSynthesis.cancel();
   newSession();
 }
 
@@ -1607,9 +1813,8 @@ function importWords() {
   updateLimitBar();
 }
 
-
 // ── WORD SETS ───────────────────────────────────────
-let activeSetId = null;   // null = all words
+let activeSetId = null;
 let setsFilterLang = 'all';
 
 function renderSets() {
@@ -1618,7 +1823,6 @@ function renderSets() {
     ? wordSets
     : wordSets.filter(s => s.lang === setsFilterLang);
 
-  // Build all-words card first so it always appears at top
   const allCard = `
     <div class="set-card ${activeSetId === null ? 'active-set' : ''}" onclick="activateSet(null)">
       ${activeSetId === null ? '<div class="set-active-badge">Active</div>' : ''}
@@ -1660,35 +1864,19 @@ function activateSet(setId) {
     if (set.lang !== currentLang) switchLang(set.lang);
     vocab = [...set.words];
   }
-
-  // Hard reset all state variables
   awaitingNext = false;
-  isSpeakingListen = false;
-  window.speechSynthesis.cancel();
-  score = 0; streak = 0; cardIndex = 0;
-  stats = {correct:0, wrong:0, skipped:0};
-  transcript = '';
-
-  // Rebuild the flash card HTML in case showSessionEnd() replaced it
-  document.getElementById('flashCard').innerHTML = `
-    <div class="card-direction" id="cardDirection">ENGLISH → FRENCH</div>
-    <div class="card-tense" id="cardTense" style="display:none">Present Tense</div>
-    <div class="card-word" id="cardWord">Loading...</div>
-    <div class="card-type" id="cardType"></div>
-    <button class="speak-btn" onclick="speakPrompt()" title="Hear pronunciation">🔊</button>`;
-  document.getElementById('flashCard').className = 'flash-card';
-
-  // Reset all UI elements
+  learnSequenceActive = false;
+  learnAutoEval = false;
+  score = 0; streak = 0; stats = {correct:0, wrong:0, skipped:0};
   document.getElementById('scoreDisplay').textContent = 0;
-  document.getElementById('resultBanner').className = 'result-banner';
-  document.getElementById('typeInput').value = '';
-  document.getElementById('typeInput').placeholder = 'Speak or type your answer…';
   document.getElementById('submitBtn').textContent = 'Check Answer';
   document.getElementById('submitBtn').onclick = submitAnswer;
   document.getElementById('submitBtn').disabled = true;
   document.getElementById('micBtn').textContent = '🎙️';
   document.getElementById('micLabel').textContent = '🎙️ Tap mic to speak  |  ⌨️ Or just type above';
-
+  document.getElementById('typeInput').value = '';
+  document.getElementById('resultBanner').className = 'result-banner';
+  document.getElementById('flashCard').classList.remove('correct','wrong');
   renderSets();
   buildSession();
   showView('practice');
@@ -1702,13 +1890,167 @@ function filterSets(lang, btn) {
   renderSets();
 }
 
+// ── LEARN MODE ─────────────────────────────────────
+function switchSessionMode(mode) {
+  sessionMode = mode;
+  localStorage.setItem('pb_sessionMode', mode);
+  document.getElementById('smLearn').classList.toggle('active', mode === 'learn');
+  document.getElementById('smReinforce').classList.toggle('active', mode === 'reinforce');
+  // Update French button label based on current lang
+  const frBtn = document.getElementById('btnSpeakFR');
+  if (frBtn) frBtn.textContent = currentLang === 'es' ? '🇪🇸 Spanish' : '🇫🇷 French';
+  newSession();
+}
+
+function setLearnStatus(msg) {
+  const el = document.getElementById('learnStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function loadLearnCard() {
+  const card = currentCard;
+  // Show target language word prominently
+  const learnTarget = document.getElementById('cardLearnTarget');
+  learnTarget.textContent = card.tgt;
+  learnTarget.style.display = 'block';
+  // Show speak row
+  document.getElementById('learnSpeakRow').style.display = 'flex';
+  // Update FR button label for current lang
+  const frBtn = document.getElementById('btnSpeakFR');
+  if (frBtn) frBtn.textContent = currentLang === 'es' ? '🇪🇸 Spanish' : '🇫🇷 French';
+  // Hide submit button — answers are auto-evaluated
+  document.getElementById('submitBtn').style.display = 'none';
+  // Show hint in type input
+  document.getElementById('typeInput').placeholder = 'Tap mic to start sequence, or type the ' + (currentLang === 'es' ? 'Spanish' : 'French') + ' word…';
+  setLearnStatus('Tap 🎙️ to hear & repeat, or use the buttons above');
+}
+
+function speakLearningEN() {
+  if (!currentCard) return;
+  const utt = new SpeechSynthesisUtterance(currentCard.en);
+  utt.lang = 'en-US';
+  utt.rate = 0.9;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utt);
+}
+
+function speakLearningFR() {
+  if (!currentCard) return;
+  const cfg = langConfig[currentLang];
+  const utt = new SpeechSynthesisUtterance(currentCard.tgt);
+  utt.lang = cfg.lang;
+  utt.rate = 0.75;
+  if (cfg.voiceName) {
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find(v => v.name === cfg.voiceName);
+    if (v) utt.voice = v;
+  }
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utt);
+}
+
+function runLearnAutoSequence() {
+  if (learnSequenceActive || awaitingNext) return;
+  learnSequenceActive = true;
+  setLearnStatus('🔊 Speaking English…');
+  // 1. Speak English
+  const uttEN = new SpeechSynthesisUtterance(currentCard.en);
+  uttEN.lang = 'en-US';
+  uttEN.rate = 0.9;
+  window.speechSynthesis.cancel();
+  uttEN.onend = () => {
+    setLearnStatus('🔊 Speaking ' + (currentLang === 'es' ? 'Spanish' : 'French') + '…');
+    setTimeout(() => {
+      // 2. Speak target language
+      const cfg = langConfig[currentLang];
+      const uttTGT = new SpeechSynthesisUtterance(currentCard.tgt);
+      uttTGT.lang = cfg.lang;
+      uttTGT.rate = 0.75;
+      if (cfg.voiceName) {
+        const voices = window.speechSynthesis.getVoices();
+        const v = voices.find(v => v.name === cfg.voiceName);
+        if (v) uttTGT.voice = v;
+      }
+      uttTGT.onend = () => {
+        setTimeout(() => {
+          // 3. Open mic for repetition
+          setLearnStatus('🎙️ Listening…');
+          learnAutoEval = true;
+          document.getElementById('typeInput').value = '';
+          try { recognition.start(); } catch(e) { learnSequenceActive = false; learnAutoEval = false; }
+        }, 500);
+      };
+      window.speechSynthesis.speak(uttTGT);
+    }, 300);
+  };
+  window.speechSynthesis.speak(uttEN);
+}
+
+function evaluateLearnAnswer() {
+  learnSequenceActive = false;
+  const typed = document.getElementById('typeInput').value.trim();
+  if (!typed) {
+    setLearnStatus('⚠️ No answer detected — tap mic to try again');
+    return;
+  }
+  const target = currentCard.tgt.toLowerCase().trim();
+  const answer = typed.toLowerCase().trim();
+
+  // Apply phonetic aliases
+  const cfg = langConfig[currentLang];
+  const aliases = cfg.phoneticAliases || {};
+  const normalized = aliases[answer] || answer;
+
+  const dist = levenshtein(normalized, target);
+  const maxLen = Math.max(normalized.length, target.length);
+  const ratio = 1 - dist / maxLen;
+  const correct = ratio >= 0.72;
+
+  trackWordStat(currentCard, correct);
+
+  if (correct) {
+    score++; streak++;
+    stats.correct++;
+    document.getElementById('scoreDisplay').textContent = score;
+    document.getElementById('flashCard').classList.add('correct');
+    document.getElementById('resultBanner').className = 'result-banner correct';
+    document.getElementById('resultBanner').textContent = streak >= 3 ? `🔥 ${streak} in a row! Great pronunciation!` : '✅ Correct!';
+    setLearnStatus('✅ Well done!');
+  } else {
+    streak = 0;
+    stats.wrong++;
+    document.getElementById('flashCard').classList.add('wrong');
+    document.getElementById('resultBanner').className = 'result-banner wrong';
+    document.getElementById('resultBanner').textContent = `❌ Try: "${currentCard.tgt}"`;
+    setLearnStatus('❌ Try again — tap mic to repeat');
+  }
+
+  awaitingNext = true;
+  document.getElementById('submitBtn').style.display = '';
+  document.getElementById('submitBtn').textContent = 'Next →';
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('submitBtn').onclick = nextCard;
+}
+
+function trackWordStat(card, correct) {
+  const key = `${currentLang}:${card.en}`;
+  let stats = JSON.parse(localStorage.getItem('pb_wordStats') || '{}');
+  if (!stats[key]) stats[key] = {seen: 0, correct: 0};
+  stats[key].seen++;
+  if (correct) stats[key].correct++;
+  localStorage.setItem('pb_wordStats', JSON.stringify(stats));
+}
+
 // ── INIT ────────────────────────────────────────────
 loadUserVocab();
-vocab = [...frenchVocab, ...userVocabFr]; // start with French + any saved words
+vocab = [...frenchVocab, ...userVocabFr];
 initSpeech();
 buildSession();
 loadCard();
-renderSets(); // pre-render sets in background
+renderSets();
+switchSessionMode(sessionMode); // apply saved session mode UI state
 </script>
 </body>
 </html>
