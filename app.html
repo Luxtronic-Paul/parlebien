@@ -1710,6 +1710,7 @@ function newSession() {
   score=0; streak=0; stats={correct:0,wrong:0,skipped:0};
   isSpeakingListen=false;
   window.speechSynthesis.cancel();
+  if (typeof recognition !== 'undefined' && isListening) { try { recognition.stop(); } catch(e) {} }
   document.getElementById('scoreDisplay').textContent=0;
   buildSession();
 
@@ -1938,20 +1939,25 @@ function setLearnStatus(msg) {
 
 function loadLearnCard() {
   const card = currentCard;
-  // Show target language word prominently
+  const cfg = langConfig[currentLang];
+  // Set English word (the prompt) so it never shows 'Loading...'
+  document.getElementById('cardWord').textContent = card.en;
+  document.getElementById('cardType').textContent = card.type || '';
+  document.getElementById('cardDirection').textContent = cfg.enToTgt + ' — Learn';
+  document.getElementById('cardTense').style.display = 'none';
+  // Show target language translation below
   const learnTarget = document.getElementById('cardLearnTarget');
   learnTarget.textContent = card.tgt;
   learnTarget.style.display = 'block';
   // Show speak row
   document.getElementById('learnSpeakRow').style.display = 'flex';
-  // Update FR button label for current lang
+  // Update lang button label
   const frBtn = document.getElementById('btnSpeakFR');
   if (frBtn) frBtn.textContent = currentLang === 'es' ? '🇪🇸 Spanish' : '🇫🇷 French';
   // Hide submit button — answers are auto-evaluated
   document.getElementById('submitBtn').style.display = 'none';
-  // Show hint in type input
   document.getElementById('typeInput').placeholder = 'Tap mic to start sequence, or type the ' + (currentLang === 'es' ? 'Spanish' : 'French') + ' word…';
-  setLearnStatus('Tap 🎙️ to hear & repeat, or use the buttons above');
+  setLearnStatus('Tap 🏙️ to hear & repeat, or use the buttons above');
 }
 
 function speakLearningEN() {
@@ -2042,18 +2048,21 @@ function evaluateLearnAnswer() {
     stats.correct++;
     document.getElementById('scoreDisplay').textContent = score;
     document.getElementById('flashCard').classList.add('correct');
-    document.getElementById('resultBanner').className = 'result-banner correct';
-    document.getElementById('resultBanner').textContent = streak >= 3 ? `🔥 ${streak} in a row! Great pronunciation!` : '✅ Correct!';
+    document.getElementById('resultBanner').className = 'result-banner correct-banner show';
+    document.getElementById('resultIcon').textContent = '✅';
+    document.getElementById('resultText').innerHTML = streak >= 3
+      ? `<b>🔥 ${streak} in a row!</b> Great pronunciation!`
+      : `<b>Correct!</b> ${currentCard.en} = <em>${currentCard.tgt}</em>`;
     setLearnStatus('✅ Well done!');
   } else {
     streak = 0;
     stats.wrong++;
     document.getElementById('flashCard').classList.add('wrong');
-    document.getElementById('resultBanner').className = 'result-banner wrong';
-    document.getElementById('resultBanner').textContent = `❌ Try: "${currentCard.tgt}"`;
+    document.getElementById('resultBanner').className = 'result-banner wrong-banner show';
+    document.getElementById('resultIcon').textContent = '❌';
+    document.getElementById('resultText').innerHTML = `<b>Not quite.</b> The answer is: <em>${currentCard.tgt}</em>`;
     setLearnStatus('❌ Try again — tap mic to repeat');
   }
-
   awaitingNext = true;
   document.getElementById('submitBtn').style.display = '';
   document.getElementById('submitBtn').textContent = 'Next →';
@@ -2074,8 +2083,6 @@ function trackWordStat(card, correct) {
 loadUserVocab();
 vocab = [...frenchVocab, ...userVocabFr];
 initSpeech();
-buildSession();
-loadCard();
 renderSets();
 switchSessionMode(sessionMode); // apply saved session mode UI state
 </script>
