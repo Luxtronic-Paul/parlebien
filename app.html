@@ -1713,6 +1713,12 @@ function newSession() {
   document.getElementById('scoreDisplay').textContent=0;
   buildSession();
 
+  // Skip anchor card on repeat sessions — avoids the welcome card every time
+  // and prevents learn-mode loop where anchor skip causes immediate session end
+  if (sessionCards.length > 1 && sessionCards[0] && sessionCards[0]._isAnchor) {
+    cardIndex = 1;
+  }
+
   // Rebuild flash card HTML — showSessionEnd() replaces innerHTML and removes all IDs
   const fc = document.getElementById('flashCard');
   fc.className = 'flash-card';
