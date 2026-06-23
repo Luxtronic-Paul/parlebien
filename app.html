@@ -1419,6 +1419,10 @@ function loadCard() {
   if(cardIndex>=sessionCards.length){showSessionEnd();return;}
   currentCard=sessionCards[cardIndex];
   currentTenseKey=null;
+  // Clear 'Loading...' immediately — prevents it from sticking in any mode
+  if (currentCard && !currentCard._isAnchor) {
+    document.getElementById('cardWord').textContent = currentCard.en || '';
+  }
   const card=document.getElementById('flashCard');
   card.classList.remove('correct','wrong');
   card.classList.add('card-animate');
