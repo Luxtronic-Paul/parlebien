@@ -1712,9 +1712,30 @@ function newSession() {
   window.speechSynthesis.cancel();
   document.getElementById('scoreDisplay').textContent=0;
   buildSession();
+
+  // Rebuild flash card HTML — showSessionEnd() replaces innerHTML and removes all IDs
+  const fc = document.getElementById('flashCard');
+  fc.className = 'flash-card';
+  fc.innerHTML = `
+    <div class="card-direction" id="cardDirection">ENGLISH → FRENCH</div>
+    <div class="card-tense" id="cardTense" style="display:none">Present Tense</div>
+    <div class="card-word" id="cardWord">Loading...</div>
+    <div class="card-type" id="cardType"></div>
+    <button class="speak-btn" id="speakPromptBtn" onclick="speakPrompt()" title="Hear pronunciation">🔊</button>
+    <div class="card-learn-target" id="cardLearnTarget"></div>
+    <div class="learn-speak-row" id="learnSpeakRow">
+      <button class="btn-speak-lang" onclick="speakLearningEN()">🔊 English</button>
+      <button class="btn-speak-lang" id="btnSpeakFR" onclick="speakLearningFR()">🇫🇷 French</button>
+    </div>`;
+
   document.getElementById('typeInput').value='';
   document.getElementById('typeInput').placeholder='Speak or type your answer…';
   document.getElementById('micLabel').textContent='🎙️ Tap mic to speak  |  ⌨️ Or just type above';
+  document.getElementById('resultBanner').className='result-banner';
+  document.getElementById('submitBtn').textContent='Check Answer';
+  document.getElementById('submitBtn').onclick=submitAnswer;
+  document.getElementById('submitBtn').disabled=true;
+  document.getElementById('micBtn').textContent='🎙️';
   loadCard();
 }
 
